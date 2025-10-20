@@ -6,7 +6,7 @@ It takes user input (experience, education, skills) and job descriptions, then p
 
 ## 🛠 Tech Stack
 - **Python (Flask or FastAPI)** – backend  
-- **React** – frontend  
+- **Flutter (Dart, running as a web app)** – frontend  
 - **OpenAI / Claude API** – AI-powered content generation  
 - **Export libraries** – PDF/Word output  
 
