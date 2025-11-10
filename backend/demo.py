@@ -63,11 +63,21 @@ def test_generate_resume():
         if response.status_code == 200:
             data = response.json()
             if data.get('success'):
-                print("\n✅ Resume generated successfully!")
+                resume = data.get('resume', '')
+                
+                # Check if it's a placeholder or AI-generated
+                is_placeholder = "This is a placeholder resume" in resume
+                
+                if is_placeholder:
+                    print("\n✅ Resume generated successfully (using placeholder format)!")
+                    print("   ℹ️  To enable AI-powered generation, add your OpenAI API key to backend/.env")
+                else:
+                    print("\n✅ Resume generated successfully (AI-powered)!")
+                
                 print("\n" + "="*60)
                 print("GENERATED RESUME:")
                 print("="*60)
-                print(data.get('resume', ''))
+                print(resume)
                 print("="*60)
                 return True
             else:
@@ -79,15 +89,6 @@ def test_generate_resume():
                 error_data = response.json()
                 error_msg = error_data.get('error', 'Unknown error')
                 print(f"   Error: {error_msg}")
-                
-                # Check if it's an API key issue
-                if "OpenAI API key" in error_msg:
-                    print("\n   ℹ️  This is expected if you haven't configured your OpenAI API key yet.")
-                    print("   To enable AI resume generation:")
-                    print("   1. Copy backend/.env.example to backend/.env")
-                    print("   2. Add your OpenAI API key to the .env file")
-                    print("   3. Restart the backend server")
-                    return "skipped"
             except:
                 print(f"   Response: {response.text}")
             return False
@@ -134,7 +135,8 @@ def main():
     print("AI Resume Builder - Backend API Test")
     print("="*60)
     print("\nMake sure the backend is running: cd backend && python app.py")
-    print("Also ensure OPENAI_API_KEY is set in backend/.env")
+    print("Note: The app works without an API key (using placeholder format).")
+    print("For AI-powered resumes, set OPENAI_API_KEY in backend/.env")
     print()
     
     # Run tests
@@ -148,22 +150,17 @@ def main():
     print("TEST SUMMARY")
     print("="*60)
     for test_name, passed in results:
-        if passed == "skipped":
-            status = "⚠️  SKIPPED (API key not configured)"
-        elif passed:
+        if passed == True:
             status = "✅ PASSED"
         else:
             status = "❌ FAILED"
         print(f"{test_name:25} {status}")
     
     total_passed = sum(1 for _, passed in results if passed == True)
-    total_skipped = sum(1 for _, passed in results if passed == "skipped")
-    print(f"\nTotal: {total_passed}/{len(results)} tests passed, {total_skipped} skipped")
+    print(f"\nTotal: {total_passed}/{len(results)} tests passed")
     
-    if total_passed + total_skipped == len(results):
+    if total_passed == len(results):
         print("\n🎉 All tests passed! The backend is working correctly.")
-        if total_skipped > 0:
-            print("   (Some tests were skipped due to missing API key configuration)")
         return 0
     else:
         print("\n⚠️  Some tests failed. Check the output above for details.")

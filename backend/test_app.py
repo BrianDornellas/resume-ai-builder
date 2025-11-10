@@ -47,17 +47,19 @@ def test_generate_resume_structure():
         content_type='application/json'
     )
     
-    # We expect either 200 (success) or 500 (OpenAI error due to missing key)
-    assert response.status_code in [200, 500]
+    # Should always return 200 now (with placeholder if no API key)
+    assert response.status_code == 200
     data = json.loads(response.data)
     
-    if response.status_code == 200:
-        assert 'success' in data
-        assert 'resume' in data
-        print("✓ Generate resume structure test passed (with API)")
+    assert 'success' in data
+    assert data['success'] == True
+    assert 'resume' in data
+    
+    # Check if it's placeholder or AI-generated
+    if "placeholder resume" in data['resume']:
+        print("✓ Generate resume structure test passed (using placeholder format)")
     else:
-        assert 'error' in data or 'success' in data
-        print("✓ Generate resume structure test passed (API key not configured)")
+        print("✓ Generate resume structure test passed (AI-powered)")
 
 if __name__ == '__main__':
     print("Running backend tests...\n")
