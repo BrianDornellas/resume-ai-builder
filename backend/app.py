@@ -42,6 +42,7 @@ def generate_resume():
         # Check if OpenAI API key is configured
         client = get_openai_client()
         if not client:
+            
             return jsonify({
                 "success": False,
                 "error": "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable."
@@ -92,7 +93,7 @@ Please create a well-formatted, professional resume in plain text format. Includ
         # Return a generic error message to avoid exposing stack traces
         return jsonify({
             "success": False,
-            "error": "An error occurred while generating the resume. Please try again."
+            "error": f"An error occurred while generating the resume. Please try again. {str(e)}"
         }), 500
 
 if __name__ == '__main__':
