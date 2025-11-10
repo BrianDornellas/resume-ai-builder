@@ -61,9 +61,87 @@ def test_generate_resume_structure():
     else:
         print("✓ Generate resume structure test passed (AI-powered)")
 
+def test_chronological_template():
+    """Test chronological template generation"""
+    client = app.test_client()
+    
+    test_data = {
+        'name': 'Jane Smith',
+        'education': 'MBA, Harvard Business School',
+        'experience': 'Product Manager at Google',
+        'skills': 'Leadership, Strategy',
+        'template': 'chronological'
+    }
+    
+    response = client.post(
+        '/generate-resume',
+        data=json.dumps(test_data),
+        content_type='application/json'
+    )
+    
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data['success'] == True
+    assert 'resume' in data
+    assert 'template' in data
+    assert data['template'] == 'chronological'
+    print("✓ Chronological template test passed")
+
+def test_functional_template():
+    """Test functional template generation"""
+    client = app.test_client()
+    
+    test_data = {
+        'name': 'Bob Johnson',
+        'education': 'BS in Engineering',
+        'experience': 'Software Developer',
+        'skills': 'Python, Java, AWS',
+        'template': 'functional'
+    }
+    
+    response = client.post(
+        '/generate-resume',
+        data=json.dumps(test_data),
+        content_type='application/json'
+    )
+    
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data['success'] == True
+    assert 'resume' in data
+    assert 'template' in data
+    assert data['template'] == 'functional'
+    print("✓ Functional template test passed")
+
+def test_default_template():
+    """Test that default template is chronological when not specified"""
+    client = app.test_client()
+    
+    test_data = {
+        'name': 'Alice Brown',
+        'education': 'PhD in Physics',
+        'experience': 'Research Scientist',
+        'skills': 'Data Analysis, Machine Learning'
+    }
+    
+    response = client.post(
+        '/generate-resume',
+        data=json.dumps(test_data),
+        content_type='application/json'
+    )
+    
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data['success'] == True
+    assert data['template'] == 'chronological'
+    print("✓ Default template test passed")
+
 if __name__ == '__main__':
     print("Running backend tests...\n")
     test_health_endpoint()
     test_generate_resume_missing_fields()
     test_generate_resume_structure()
+    test_chronological_template()
+    test_functional_template()
+    test_default_template()
     print("\nAll tests completed!")

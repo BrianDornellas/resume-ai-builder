@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../services/api_service.dart';
 
 class ResumeFormScreen extends StatefulWidget {
@@ -17,7 +18,22 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
   final _apiService = ApiService();
 
   String? _generatedResume;
+  String _selectedTemplate = 'chronological';
   bool _isLoading = false;
+
+  // Template options
+  final List<Map<String, String>> _templates = [
+    {
+      'value': 'chronological',
+      'name': 'Chronological',
+      'description': 'Traditional format emphasizing work history in reverse chronological order. Best for those with consistent career progression.',
+    },
+    {
+      'value': 'functional',
+      'name': 'Functional',
+      'description': 'Skills-based format emphasizing competencies over work timeline. Best for career changers or those with employment gaps.',
+    },
+  ];
 
   @override
   void dispose() {
@@ -36,15 +52,16 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       });
 
       try {
-        final resume = await _apiService.generateResume(
+        final result = await _apiService.generateResume(
           name: _nameController.text,
           education: _educationController.text,
           experience: _experienceController.text,
           skills: _skillsController.text,
+          template: _selectedTemplate,
         );
 
         setState(() {
-          _generatedResume = resume;
+          _generatedResume = result['resume'];
           _isLoading = false;
         });
       } catch (e) {
@@ -152,6 +169,48 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                         },
                       ),
                       const SizedBox(height: 24),
+                      Text(
+                        'Select Resume Template',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedTemplate,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: _templates.map((template) {
+                          return DropdownMenuItem<String>(
+                            value: template['value'],
+                            child: Text(template['name']!),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedTemplate = value!;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Text(
+                          _templates.firstWhere(
+                            (t) => t['value'] == _selectedTemplate,
+                          )['description']!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.blue.shade900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: _isLoading ? null : _generateResume,
                         style: ElevatedButton.styleFrom(
@@ -181,22 +240,54 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        'Generated Resume',
-                        style: Theme.of(context).textTheme.headlineSmall,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Generated Resume',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          Chip(
+                            label: Text(
+                              _templates.firstWhere(
+                                (t) => t['value'] == _selectedTemplate,
+                              )['name']!,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            backgroundColor: Colors.blue.shade100,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
-                        child: Text(
-                          _generatedResume!,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 14,
+                        child: MarkdownBody(
+                          data: _generatedResume!,
+                          styleSheet: MarkdownStyleSheet(
+                            h1: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            h2: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            p: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              height: 1.5,
+                            ),
+                            listBullet: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
                           ),
                         ),
                       ),
