@@ -28,6 +28,7 @@ It takes user input (experience, education, skills) and job descriptions, then p
 2. Set up the backend:
    ```bash
    cd backend
+   source venv/bin/activate
    pip install -r requirements.txt
    ```
 
