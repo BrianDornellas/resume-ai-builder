@@ -38,7 +38,9 @@ It takes user input (experience, education, skills) and job descriptions, then p
    Then edit `.env` and add your OpenAI API key:
    ```
    OPENAI_API_KEY=your_actual_api_key_here
+   FLASK_DEBUG=True
    ```
+   Note: Set `FLASK_DEBUG=False` in production environments.
 
 4. Run the backend server:
    ```bash

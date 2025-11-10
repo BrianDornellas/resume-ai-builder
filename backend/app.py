@@ -86,10 +86,17 @@ Please create a well-formatted, professional resume in plain text format. Includ
         }), 200
         
     except Exception as e:
+        # Log the full error for debugging (in production, use proper logging)
+        app.logger.error(f"Error generating resume: {str(e)}")
+        
+        # Return a generic error message to avoid exposing stack traces
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": "An error occurred while generating the resume. Please try again."
         }), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use debug mode only in development
+    # In production, use a WSGI server like gunicorn
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
