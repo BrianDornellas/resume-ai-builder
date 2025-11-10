@@ -37,14 +37,16 @@ if [ -f "backend/requirements.txt" ]; then
         
         # Check if OpenAI API key is configured
         if grep -q "OPENAI_API_KEY=your_openai_api_key_here" backend/.env 2>/dev/null; then
-            echo "⚠️  OpenAI API key not configured. Please update backend/.env with your API key."
+            echo "ℹ️  OpenAI API key not configured (using placeholder format)."
+            echo "   Add your API key to backend/.env for AI-powered resumes."
         elif grep -q "OPENAI_API_KEY=" backend/.env 2>/dev/null; then
-            echo "✅ OpenAI API key appears to be configured"
+            echo "✅ OpenAI API key appears to be configured (AI-powered mode)"
         else
-            echo "⚠️  OpenAI API key not found in .env file"
+            echo "ℹ️  OpenAI API key not found in .env file (using placeholder format)"
         fi
     else
-        echo "⚠️  .env file not found. Please copy .env.example to .env and configure it."
+        echo "ℹ️  .env file not found (app will use placeholder format)."
+        echo "   To enable AI-powered resumes, copy .env.example to .env and add your API key."
     fi
 else
     echo "❌ backend/requirements.txt not found"

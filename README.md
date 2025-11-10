@@ -15,7 +15,7 @@ It takes user input (experience, education, skills) and job descriptions, then p
 ### Prerequisites
 - Python 3.8 or higher
 - Flutter SDK 3.0 or higher
-- OpenAI API key
+- OpenAI API key (optional - app works with placeholder format without it)
 
 ### Backend Setup
 
@@ -31,7 +31,7 @@ It takes user input (experience, education, skills) and job descriptions, then p
    pip install -r requirements.txt
    ```
 
-3. Create a `.env` file in the `backend` directory:
+3. (Optional) Create a `.env` file in the `backend` directory for AI-powered resume generation:
    ```bash
    cp .env.example .env
    ```
@@ -40,7 +40,7 @@ It takes user input (experience, education, skills) and job descriptions, then p
    OPENAI_API_KEY=your_actual_api_key_here
    FLASK_DEBUG=True
    ```
-   Note: Set `FLASK_DEBUG=False` in production environments.
+   Note: The app works without an API key using a placeholder format. Set `FLASK_DEBUG=False` in production environments.
 
 4. Run the backend server:
    ```bash

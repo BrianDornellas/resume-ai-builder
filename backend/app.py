@@ -39,6 +39,7 @@ def generate_resume():
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
         
+<<<<<<< HEAD
         # Check if OpenAI API key is configured
         client = get_openai_client()
         if not client:
@@ -64,14 +65,43 @@ def generate_resume():
             }), 200
 
         
+=======
+>>>>>>> 9c3ac1938151f2813d12fa521542a4d61050e97a
         # Extract user data
         name = data['name']
         education = data['education']
         experience = data['experience']
         skills = data['skills']
         
-        # Create structured prompt for AI
-        prompt = f"""Generate a professional resume based on the following information:
+        # Check if OpenAI API key is configured
+        client = get_openai_client()
+        
+        if not client:
+            # Generate a placeholder resume when API key is not configured
+            resume_text = f"""
+{name}
+{'=' * len(name)}
+
+EDUCATION
+---------
+{education}
+
+EXPERIENCE
+----------
+{experience}
+
+SKILLS
+------
+{skills}
+
+---
+Note: This is a placeholder resume. Configure your OpenAI API key to generate AI-powered resumes.
+To add your API key, create a .env file in the backend directory with:
+OPENAI_API_KEY=your_api_key_here
+"""
+        else:
+            # Create structured prompt for AI
+            prompt = f"""Generate a professional resume based on the following information:
 
             Name: {name}
 
@@ -83,19 +113,19 @@ def generate_resume():
 
             Please create a well-formatted, professional resume in plain text format. Include appropriate sections and make it suitable for job applications."""
 
-        # Call OpenAI API
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a professional resume writer. Create clear, concise, and well-formatted resumes."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=1000
-        )
-        
-        # Extract generated resume
-        resume_text = response.choices[0].message.content
+            # Call OpenAI API
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a professional resume writer. Create clear, concise, and well-formatted resumes."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=1000
+            )
+            
+            # Extract generated resume
+            resume_text = response.choices[0].message.content
         
         return jsonify({
             "success": True,

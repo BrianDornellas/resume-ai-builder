@@ -14,7 +14,10 @@ This document provides a guide for using the AI Resume Builder MVP implemented i
      ```
 
 2. **Resume Generation Endpoint** - `POST /generate-resume`
-   - Accepts user information and generates a professional resume using AI
+   - Accepts user information and generates a professional resume
+   - Works with or without OpenAI API key:
+     - **With API key**: Generates AI-powered, customized resume
+     - **Without API key**: Returns formatted placeholder resume with user data
    - Request format:
      ```json
      {
@@ -88,10 +91,14 @@ curl -X POST http://localhost:5000/generate-resume \
   }'
 ```
 
+Note: The API works without an OpenAI key (returns placeholder format). Add your API key to get AI-powered resumes.
+
 ## Environment Configuration
 
 ### Development
+- The app works without any `.env` file (uses placeholder format)
 - Set `FLASK_DEBUG=True` in your `.env` file for detailed error messages
+- Add `OPENAI_API_KEY` to `.env` for AI-powered resume generation
 - API calls are made to `http://localhost:5000`
 
 ### Production
@@ -102,7 +109,7 @@ curl -X POST http://localhost:5000/generate-resume \
 ## Troubleshooting
 
 ### Backend Issues
-1. **OpenAI API Key Error**: Make sure `OPENAI_API_KEY` is set in the `.env` file
+1. **Want AI-Powered Resumes**: Add `OPENAI_API_KEY` to the `.env` file (app works without it using placeholder format)
 2. **Port Already in Use**: Change the port in `app.py` if 5000 is occupied
 3. **Module Import Errors**: Run `pip install -r requirements.txt` to install dependencies
 
