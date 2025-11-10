@@ -1,0 +1,11 @@
+{
+  "name": "resume_ai_builder",
+  "short_name": "Resume AI",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0175C2",
+  "theme_color": "#0175C2",
+  "description": "AI-powered resume builder application",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}
