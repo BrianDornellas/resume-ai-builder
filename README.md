@@ -77,6 +77,10 @@ It takes user input (experience, education, skills) and job descriptions, then p
 4. Click "Generate Resume"
 5. The AI-generated resume will appear below the form
 
+For detailed usage instructions and examples, see [USAGE_GUIDE.md](USAGE_GUIDE.md)
+
+For architecture and technical details, see [ARCHITECTURE.md](ARCHITECTURE.md)
+
 ## 📋 Roadmap
 
 Week 1: Repo + README setup ✅
