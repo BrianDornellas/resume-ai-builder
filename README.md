@@ -74,8 +74,21 @@ It takes user input (experience, education, skills) and job descriptions, then p
    - **Education**: Your educational background
    - **Experience**: Your work experience
    - **Skills**: Your technical and professional skills
+   - **Template**: Choose between Chronological or Functional layout
 4. Click "Generate Resume"
-5. The AI-generated resume will appear below the form
+5. The AI-generated resume will appear below the form in beautifully formatted Markdown
+
+#### Resume Templates
+
+**Chronological Template:**
+- Emphasizes work history in reverse chronological order
+- Ideal for traditional career progression
+- Best for candidates with consistent work history
+
+**Functional Template:**
+- Emphasizes skills and competencies over timeline
+- Ideal for career changers or those with employment gaps
+- Best for highlighting transferable skills
 
 For detailed usage instructions and examples, see [USAGE_GUIDE.md](USAGE_GUIDE.md)
 
@@ -87,7 +100,7 @@ Week 1: Repo + README setup ✅
 
 Week 2: Resume generation (basic text) ✅
 
-Week 3: Resume templates
+Week 3: Resume templates ✅
 
 Week 4: Cover letter generation
 
