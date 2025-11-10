@@ -42,11 +42,27 @@ def generate_resume():
         # Check if OpenAI API key is configured
         client = get_openai_client()
         if not client:
+            # Return a mock resume so you can test without API key
+            mock_resume = f"""
+            {data['name']}
             
+            Education:
+            {data['education']}
+            
+            Experience:
+            {data['experience']}
+            
+            Skills:
+            {data['skills']}
+            
+            ---
+            (Mock resume generated locally. Add your OpenAI API key to enable AI-powered generation.)
+            """
             return jsonify({
-                "success": False,
-                "error": "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable."
-            }), 500
+                "success": True,
+                "resume": mock_resume.strip()
+            }), 200
+
         
         # Extract user data
         name = data['name']
@@ -57,15 +73,15 @@ def generate_resume():
         # Create structured prompt for AI
         prompt = f"""Generate a professional resume based on the following information:
 
-Name: {name}
+            Name: {name}
 
-Education: {education}
+            Education: {education}
 
-Experience: {experience}
+            Experience: {experience}
 
-Skills: {skills}
+            Skills: {skills}
 
-Please create a well-formatted, professional resume in plain text format. Include appropriate sections and make it suitable for job applications."""
+            Please create a well-formatted, professional resume in plain text format. Include appropriate sections and make it suitable for job applications."""
 
         # Call OpenAI API
         response = client.chat.completions.create(
