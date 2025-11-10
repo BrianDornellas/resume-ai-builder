@@ -5,11 +5,12 @@ class ApiService {
   // Update this URL to match your backend
   static const String baseUrl = 'http://localhost:5000';
 
-  Future<String> generateResume({
+  Future<Map<String, dynamic>> generateResume({
     required String name,
     required String education,
     required String experience,
     required String skills,
+    String template = 'chronological',
   }) async {
     try {
       final response = await http.post(
@@ -20,13 +21,17 @@ class ApiService {
           'education': education,
           'experience': experience,
           'skills': skills,
+          'template': template,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          return data['resume'];
+          return {
+            'resume': data['resume'],
+            'template': data['template'],
+          };
         } else {
           throw Exception(data['error'] ?? 'Failed to generate resume');
         }

@@ -83,13 +83,16 @@ resume-ai-builder/
 ├── backend/
 │   ├── .env.example          # Environment variables template
 │   ├── app.py                # Flask application & API endpoints
+│   ├── templates.py          # Resume template formatting (Week 3)
 │   ├── requirements.txt      # Python dependencies
-│   └── test_app.py          # Unit tests for backend
+│   ├── test_app.py          # Unit tests for backend
+│   ├── demo.py              # Demo script for API testing
+│   └── demo_templates.py    # Demo script for templates (Week 3)
 ├── frontend/
 │   ├── lib/
 │   │   ├── main.dart                    # App entry point
 │   │   ├── screens/
-│   │   │   └── resume_form_screen.dart  # Main form UI
+│   │   │   └── resume_form_screen.dart  # Main form UI with template selector
 │   │   └── services/
 │   │       └── api_service.dart         # Backend communication
 │   ├── web/
@@ -99,6 +102,9 @@ resume-ai-builder/
 ├── .gitignore               # Git ignore rules
 ├── README.md                # Main documentation
 ├── USAGE_GUIDE.md          # Usage instructions
+├── ARCHITECTURE.md         # System architecture
+├── WEEK2_SUMMARY.md        # Week 2 implementation summary
+├── WEEK3_SUMMARY.md        # Week 3 implementation summary
 └── verify-setup.sh         # Setup verification script
 ```
 
@@ -140,15 +146,21 @@ resume-ai-builder/
   "name": "string (required)",
   "education": "string (required)",
   "experience": "string (required)",
-  "skills": "string (required)"
+  "skills": "string (required)",
+  "template": "string (optional, default: 'chronological')"
 }
 ```
+
+**Template Options:**
+- `"chronological"` - Traditional format with reverse chronological work history
+- `"functional"` - Skills-based format emphasizing competencies
 
 **Success Response (200):**
 ```json
 {
   "success": true,
-  "resume": "string (generated resume text)"
+  "resume": "string (Markdown formatted resume)",
+  "template": "string (template that was used)"
 }
 ```
 
@@ -169,11 +181,39 @@ resume-ai-builder/
 }
 ```
 
-## Future Enhancements (Weeks 3-8)
+## Week 3 Enhancements - Resume Templates
 
-- Week 3: Multiple resume template formats
+### Template System
+The application now supports multiple resume layouts:
+
+**Templates Available:**
+- **Chronological**: Traditional format emphasizing work history in reverse chronological order
+- **Functional**: Skills-based format emphasizing competencies over timeline
+
+**Backend (`templates.py`):**
+- Template formatting functions for mock resumes
+- Template-specific AI prompt generators (ready for Week 5)
+- Markdown output format for all templates
+
+**API Updates:**
+- `/generate-resume` accepts optional `template` parameter
+- Returns `template` field in response
+- Defaults to 'chronological' if not specified
+
+**Frontend:**
+- Template selector dropdown in form
+- Template descriptions to guide user choice
+- Markdown rendering using flutter_markdown
+- Visual template indicator on generated resume
+
+**Dependencies Added:**
+- `flutter_markdown: ^0.6.18` for frontend Markdown rendering
+
+## Future Enhancements (Weeks 4-8)
+
+- Week 3: Multiple resume template formats ✅
 - Week 4: Cover letter generation
-- Week 5: Keyword optimization for job descriptions
+- Week 5: Keyword optimization for job descriptions & AI API integration
 - Week 6: PDF export functionality
 - Week 7: Save and manage multiple versions
 - Week 8: Final polish and demo preparation

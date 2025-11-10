@@ -1,30 +1,3 @@
-<<<<<<< HEAD
-from fastapi import FastAPI
-from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI()
-
-# Allow Flutter web frontend to talk to backend (CORS)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # in production, restrict this to your domain
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Request model
-class ResumeRequest(BaseModel):
-    name: str
-    skills: list[str]
-
-@app.post("/generate_resume")
-def generate_resume(req: ResumeRequest):
-    # Simulate AI logic for now
-    resume_text = f"Resume for {req.name}\nSkills: {', '.join(req.skills)}"
-    return {"resume": resume_text}
-=======
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
@@ -54,7 +27,8 @@ def generate_resume():
         "name": "John Doe",
         "education": "Bachelor of Science in Computer Science, XYZ University, 2020",
         "experience": "Software Engineer at ABC Corp (2020-2023): Developed web applications...",
-        "skills": "Python, JavaScript, React, Node.js"
+        "skills": "Python, JavaScript, React, Node.js",
+        "template": "chronological"  # optional: chronological, functional
     }
     """
     try:
@@ -66,76 +40,24 @@ def generate_resume():
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
         
-        # Check if OpenAI API key is configured
-        client = get_openai_client()
-        if not client:
-            # Return a mock resume so you can test without API key
-            mock_resume = f"""
-            {data['name']}
-            
-            Education:
-            {data['education']}
-            
-            Experience:
-            {data['experience']}
-            
-            Skills:
-            {data['skills']}
-            
-            ---
-            (Mock resume generated locally. Add your OpenAI API key to enable AI-powered generation.)
-            """
-            return jsonify({
-                "success": True,
-                "resume": mock_resume.strip()
-            }), 200
-
-        
         # Extract user data
         name = data['name']
         education = data['education']
         experience = data['experience']
         skills = data['skills']
+        template = data.get('template', 'chronological')  # default to chronological
         
         # Check if OpenAI API key is configured
         client = get_openai_client()
         
         if not client:
-            # Generate a placeholder resume when API key is not configured
-            resume_text = f"""
-                {name}
-                {'=' * len(name)}
-
-                EDUCATION
-                ---------
-                {education}
-
-                EXPERIENCE
-                ----------
-                {experience}
-
-                SKILLS
-                ------
-                {skills}
-
-                ---
-                Note: This is a placeholder resume. Configure your OpenAI API key to generate AI-powered resumes.
-                To add your API key, create a .env file in the backend directory with:
-                OPENAI_API_KEY=your_api_key_here
-                """
+            # Generate a mock resume in the requested template format
+            from templates import format_resume_mock
+            resume_text = format_resume_mock(name, education, experience, skills, template)
         else:
-            # Create structured prompt for AI
-            prompt = f"""Generate a professional resume based on the following information:
-
-            Name: {name}
-
-            Education: {education}
-
-            Experience: {experience}
-
-            Skills: {skills}
-
-            Please create a well-formatted, professional resume in plain text format. Include appropriate sections and make it suitable for job applications."""
+            # Create structured prompt for AI based on template
+            from templates import create_ai_prompt
+            prompt = create_ai_prompt(name, education, experience, skills, template)
 
             # Call OpenAI API
             response = client.chat.completions.create(
@@ -153,7 +75,8 @@ def generate_resume():
         
         return jsonify({
             "success": True,
-            "resume": resume_text
+            "resume": resume_text,
+            "template": template
         }), 200
         
     except Exception as e:
@@ -171,4 +94,3 @@ if __name__ == '__main__':
     # In production, use a WSGI server like gunicorn
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(debug=debug_mode, host='0.0.0.0', port=5000)
->>>>>>> origin/copilot/implement-resume-generation-mvp
