@@ -1,8 +1,17 @@
+<<<<<<< HEAD
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 void main() => runApp(const MyApp());
+=======
+import 'package:flutter/material.dart';
+import 'screens/resume_form_screen.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+>>>>>>> origin/copilot/implement-resume-generation-mvp
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -10,6 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+<<<<<<< HEAD
       home: Scaffold(
         appBar: AppBar(title: const Text('AI Resume Builder')),
         body: const ResumePage(),
@@ -49,6 +59,14 @@ class _ResumePageState extends State<ResumePage> {
         ),
         Text(responseText),
       ],
+=======
+      title: 'AI Resume Builder',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+      ),
+      home: const ResumeFormScreen(),
+>>>>>>> origin/copilot/implement-resume-generation-mvp
     );
   }
 }
