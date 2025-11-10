@@ -1,30 +1,3 @@
-<<<<<<< HEAD
-from fastapi import FastAPI
-from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI()
-
-# Allow Flutter web frontend to talk to backend (CORS)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # in production, restrict this to your domain
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Request model
-class ResumeRequest(BaseModel):
-    name: str
-    skills: list[str]
-
-@app.post("/generate_resume")
-def generate_resume(req: ResumeRequest):
-    # Simulate AI logic for now
-    resume_text = f"Resume for {req.name}\nSkills: {', '.join(req.skills)}"
-    return {"resume": resume_text}
-=======
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
@@ -171,4 +144,3 @@ if __name__ == '__main__':
     # In production, use a WSGI server like gunicorn
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(debug=debug_mode, host='0.0.0.0', port=5000)
->>>>>>> origin/copilot/implement-resume-generation-mvp
