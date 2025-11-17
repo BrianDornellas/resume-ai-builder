@@ -88,6 +88,81 @@ def generate_resume():
             "success": False,
             "error": f"An error occurred while generating the resume. Please try again. {str(e)}"
         }), 500
+    
+    # Helper function to build the cover letter prompt
+def build_cover_letter_prompt(data):
+    """
+    Returns a prompt string for the cover letter based on input data.
+    data: dict with keys 'name', 'company', 'role', 'job_description', 'experience', 'skills'
+    """
+    return (
+        f"Write a professional cover letter for the following job application.\n"
+        f"Applicant Name: {data.get('name', '')}\n"
+        f"Company: {data.get('company', '')}\n"
+        f"Role: {data.get('role', '')}\n"
+        f"Job Description: {data.get('job_description', '')}\n"
+        f"Relevant Experience: {data.get('experience', '')}\n"
+        f"Skills: {data.get('skills', '')}\n"
+        f"Format the cover letter in plain text."
+    )
+
+# Example curl command for /generate-cover-letter
+# curl -X POST http://localhost:5000/generate-cover-letter \
+#   -H "Content-Type: application/json" \
+#   -d '{"name": "Jane Doe", "company": "Acme Corp", "role": "Software Engineer", "job_description": "Develop and maintain web applications.", "experience": "3 years at Tech Solutions", "skills": "Python, Flask, React"}'
+
+@app.route('/generate-cover-letter', methods=['POST'])
+def generate_cover_letter():
+    """
+    Generate a cover letter from user input.
+    Expected JSON format:
+    {
+        "name": "Jane Doe",
+        "company": "Acme Corp",
+        "role": "Software Engineer",
+        "job_description": "Develop and maintain web applications.",
+        "experience": "3 years at Tech Solutions",
+        "skills": "Python, Flask, React"
+    }
+    """
+    try:
+        data = request.get_json()
+        required_fields = ['name', 'company', 'role', 'job_description', 'experience', 'skills']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
+
+        client = get_openai_client()
+        prompt = build_cover_letter_prompt(data)
+
+        if not client:
+            # Deterministic mock cover letter
+            mock_letter = (
+                f"Dear {data['company']} Hiring Team,\n\n"
+                f"I am excited to apply for the {data['role']} position. "
+                f"With experience in {data['experience']} and skills in {data['skills']}, "
+                f"I believe I am a strong fit for your team.\n\n"
+                f"Job Description Highlights: {data['job_description']}\n\n"
+                f"Thank you for considering my application.\n\nSincerely,\n{data['name']}"
+            )
+            return jsonify({"success": True, "cover_letter": mock_letter}), 200
+
+        # OpenAI API call
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a professional career coach. Write clear, concise, and tailored cover letters."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=800
+        )
+        cover_letter = response.choices[0].message.content
+        return jsonify({"success": True, "cover_letter": cover_letter}), 200
+
+    except Exception as e:
+        app.logger.error(f"Error generating cover letter: {str(e)}")
+        return jsonify({"success": False, "error": "An error occurred while generating the cover letter. Please try again."}), 500
 
 if __name__ == '__main__':
     # Use debug mode only in development

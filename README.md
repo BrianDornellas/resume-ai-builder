@@ -1,3 +1,34 @@
+# Cover Letter – Test Checklist
+
+Manual test scenarios for the Cover Letter feature (both mock mode and real API):
+
+1. **Valid Submit (Mock & Real API):**
+   - Fill all fields with realistic data and submit.
+   - Expect a generated cover letter to appear with no errors.
+   - In mock mode, the letter should be deterministic and not AI-generated.
+
+2. **Missing Required Fields:**
+   - Leave Name, Company, or Role empty and try to submit.
+   - Expect a validation error and no request sent.
+
+3. **Long Job Description:**
+   - Enter a very long job description (e.g., 1000+ characters).
+   - Submit and verify the cover letter is generated and not truncated.
+
+4. **Network Offline Case:**
+   - Disconnect from the network or stop the backend server.
+   - Submit the form and expect a friendly error banner about network issues.
+
+5. **Mock-Mode Banner Present:**
+   - With no OpenAI API key set, submit a valid form.
+   - Confirm the generated letter is a mock and notifies the user (e.g., deterministic content, not AI-generated).
+
+6. **Copy-to-Clipboard Works:**
+   - After a cover letter is generated, click the Copy button.
+   - Confirm the button shows a "Copied!" message and the clipboard contains the full letter text.
+
+Repeat these checks for both mock mode (no API key) and real API mode (valid OpenAI key set).
+
 # AI-Powered Resume & Cover Letter Builder
 
 ## 📌 Description
