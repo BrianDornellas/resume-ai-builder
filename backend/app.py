@@ -164,6 +164,117 @@ def generate_cover_letter():
         app.logger.error(f"Error generating cover letter: {str(e)}")
         return jsonify({"success": False, "error": "An error occurred while generating the cover letter. Please try again."}), 500
 
+
+# --- Resume Optimization Helpers ---
+import re
+
+STOPWORDS = set([
+    'the', 'and', 'a', 'an', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be', 'this', 'that', 'it', 'or', 'but', 'if', 'then', 'so', 'such', 'has', 'have', 'had', 'will', 'can', 'may', 'do', 'does', 'did', 'not', 'your', 'you', 'we', 'our', 'their', 'they', 'he', 'she', 'his', 'her', 'them', 'which', 'who', 'whom', 'been', 'being', 'into', 'out', 'about', 'over', 'under', 'above', 'below', 'up', 'down', 'off', 'no', 'yes', 'all', 'any', 'each', 'other', 'more', 'most', 'some', 'such', 'only', 'own', 'same', 'than', 'too', 'very', 's', 't', 'just', 'now', 'also', 'these', 'those', 'because', 'while', 'where', 'when', 'how', 'what', 'which', 'why', 'could', 'should', 'would', 'i', 'me', 'my', 'mine', 'your', 'yours', 'his', 'hers', 'its', 'ours', 'theirs', 'am'
+])
+
+def parse_keywords(text):
+    """Extracts top keywords from text, lowercased, deduped, stopwords removed."""
+    # Remove punctuation, split on whitespace
+    words = re.findall(r'\b\w+\b', text.lower())
+    keywords = [w for w in words if w not in STOPWORDS and len(w) > 2]
+    return sorted(set(keywords))
+
+def analyze_alignment(resume_text, job_keywords):
+    """Returns (missing_keywords, strengths) based on keyword presence in resume_text."""
+    resume_lc = resume_text.lower()
+    missing = [kw for kw in job_keywords if kw not in resume_lc]
+    strengths = [kw for kw in job_keywords if kw in resume_lc]
+    return missing, strengths
+
+def build_ai_prompt(resume_text, job_description):
+    """Builds a prompt for the AI to analyze resume vs job description and return JSON schema."""
+    return (
+        "You are a resume optimization assistant. "
+        "Given the following resume and job description, analyze them and respond in this JSON format: "
+        '{"success": true, "missing_keywords": ["string"], "strengths": ["string"], "suggested_edits": "string"}'
+        f"Resume:\n{resume_text}\n"
+        f"Job Description:\n{job_description}\n"
+        "- missing_keywords: List keywords/skills from the job description not present in the resume.\n"
+        "- strengths: List areas where the resume aligns well with the job description.\n"
+        "- suggested_edits: Give 3-6 concise bullet suggestions to improve the resume for this job. Do not rewrite the resume."
+    )
+
+# Example curl:
+# curl -X POST http://localhost:5000/optimize-resume \
+#   -H "Content-Type: application/json" \
+#   -d '{"resume_text": "...", "job_description": "..."}'
+
+@app.route('/optimize-resume', methods=['POST'])
+def optimize_resume():
+    try:
+        data = request.get_json()
+        resume_text = data.get('resume_text', '')
+        job_description = data.get('job_description', '')
+        if not resume_text or not job_description:
+            return jsonify({
+                "success": True,
+                "missing_keywords": [],
+                "strengths": [],
+                "suggested_edits": "Please provide both resume_text and job_description."
+            }), 200
+
+        client = get_openai_client()
+        if not client:
+            # Local analysis (mock mode)
+            job_keywords = parse_keywords(job_description)
+            missing, strengths = analyze_alignment(resume_text, job_keywords)
+            # Heuristic suggestions
+            suggestions = []
+            for kw in missing[:3]:
+                suggestions.append(f"Add '{kw}' under Skills or Experience.")
+            for kw in strengths[:2]:
+                suggestions.append(f"Quantify your impact with '{kw}'.")
+            if not suggestions:
+                suggestions.append("Highlight more relevant skills from the job description.")
+            suggested_edits = '\n'.join(f"- {s}" for s in suggestions)
+            return jsonify({
+                "success": True,
+                "missing_keywords": missing,
+                "strengths": strengths,
+                "suggested_edits": suggested_edits
+            }), 200
+
+        # AI-powered analysis
+        prompt = build_ai_prompt(resume_text, job_description)
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a resume optimization assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
+            max_tokens=600
+        )
+        # Try to parse the AI's JSON response
+        import json
+        ai_content = response.choices[0].message.content
+        try:
+            ai_json = json.loads(ai_content)
+            ai_json['success'] = True
+            return jsonify(ai_json), 200
+        except Exception:
+            # Fallback: return AI text as suggested_edits
+            return jsonify({
+                "success": True,
+                "missing_keywords": [],
+                "strengths": [],
+                "suggested_edits": ai_content.strip()
+            }), 200
+    except Exception as e:
+        app.logger.error(f"Error optimizing resume: {str(e)}")
+        return jsonify({
+            "success": True,
+            "missing_keywords": [],
+            "strengths": [],
+            "suggested_edits": "An error occurred, but the request was handled gracefully."
+        }), 200
+
+
 if __name__ == '__main__':
     # Use debug mode only in development
     # In production, use a WSGI server like gunicorn

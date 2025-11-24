@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import '../services/api_service.dart';
+import 'package:flutter/services.dart';
+import '../services/api_client.dart';
 
 class ResumeFormScreen extends StatefulWidget {
   const ResumeFormScreen({super.key});
@@ -9,19 +9,21 @@ class ResumeFormScreen extends StatefulWidget {
   State<ResumeFormScreen> createState() => _ResumeFormScreenState();
 }
 
+
 class _ResumeFormScreenState extends State<ResumeFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _educationController = TextEditingController();
   final _experienceController = TextEditingController();
   final _skillsController = TextEditingController();
-  final _apiService = ApiService();
 
-  String? _generatedResume;
+  bool _loading = false;
+  String? _resume;
+  String? _error;
+  bool _copied = false;
+
+  // Template selection state
   String _selectedTemplate = 'chronological';
-  bool _isLoading = false;
-
-  // Template options
   final List<Map<String, String>> _templates = [
     {
       'value': 'chronological',
@@ -35,267 +37,343 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     },
   ];
 
+  // Optimization panel state
+  final _jdController = TextEditingController();
+  bool _optimizing = false;
+  Map<String, dynamic>? _optResult;
+  String? _optError;
+  bool _optMock = false;
+
   @override
   void dispose() {
     _nameController.dispose();
     _educationController.dispose();
     _experienceController.dispose();
     _skillsController.dispose();
+    _jdController.dispose();
     super.dispose();
   }
 
-  Future<void> _generateResume() async {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _submit() async {
+    setState(() {
+      _loading = true;
+      _resume = null;
+      _error = null;
+      _copied = false;
+    });
+    if (!_formKey.currentState!.validate()) {
       setState(() {
-        _isLoading = true;
-        _generatedResume = null;
+        _loading = false;
       });
-
-      try {
-        final result = await _apiService.generateResume(
-          name: _nameController.text,
-          education: _educationController.text,
-          experience: _experienceController.text,
-          skills: _skillsController.text,
-          template: _selectedTemplate,
-        );
-
+      return;
+    }
+    try {
+      final result = await ApiClient().generateResume(
+        name: _nameController.text.trim(),
+        education: _educationController.text.trim(),
+        experience: _experienceController.text.trim(),
+        skills: _skillsController.text.trim(),
+        template: _selectedTemplate,
+      );
+      if (result['success'] == true) {
         setState(() {
-          _generatedResume = result['resume'];
-          _isLoading = false;
+          _resume = result['resume'] as String?;
         });
-      } catch (e) {
+      } else {
         setState(() {
-          _isLoading = false;
+          _error = result['error']?.toString() ?? 'Unknown error';
         });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
       }
+    } catch (e) {
+      setState(() {
+        _error = 'Network error: $e';
+      });
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _analyzeMatch() async {
+    setState(() {
+      _optimizing = true;
+      _optResult = null;
+      _optError = null;
+      _optMock = false;
+    });
+    if (_resume == null || _resume!.trim().isEmpty || _jdController.text.trim().isEmpty) {
+      setState(() {
+        _optimizing = false;
+        _optError = 'Please generate a resume and enter a job description.';
+      });
+      return;
+    }
+    try {
+      final result = await ApiClient().optimizeResume(
+        resumeText: _resume!,
+        jobDescription: _jdController.text.trim(),
+      );
+      setState(() {
+        _optResult = result;
+        _optError = null;
+        _optMock = (result['suggested_edits'] != null && (result['suggested_edits'] as String).contains('Highlight more relevant skills')) ||
+            (result['missing_keywords'] is List && (result['missing_keywords'] as List).isNotEmpty && (result['strengths'] as List).isEmpty);
+      });
+    } catch (e) {
+      setState(() {
+        _optError = 'Network error: $e';
+      });
+    } finally {
+      setState(() {
+        _optimizing = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('AI Resume Builder'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Enter Your Information',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Name',
-                          border: OutlineInputBorder(),
-                          hintText: 'John Doe',
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _educationController,
-                        decoration: const InputDecoration(
-                          labelText: 'Education',
-                          border: OutlineInputBorder(),
-                          hintText: 'Bachelor of Science in Computer Science, XYZ University, 2020',
-                        ),
-                        maxLines: 3,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your education';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _experienceController,
-                        decoration: const InputDecoration(
-                          labelText: 'Experience',
-                          border: OutlineInputBorder(),
-                          hintText: 'Software Engineer at ABC Corp (2020-2023): Developed web applications...',
-                        ),
-                        maxLines: 5,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your experience';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _skillsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Skills',
-                          border: OutlineInputBorder(),
-                          hintText: 'Python, JavaScript, React, Node.js',
-                        ),
-                        maxLines: 2,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your skills';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Select Resume Template',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: _selectedTemplate,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: _templates.map((template) {
-                          return DropdownMenuItem<String>(
-                            value: template['value'],
-                            child: Text(template['name']!),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedTemplate = value!;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue.shade200),
-                        ),
-                        child: Text(
-                          _templates.firstWhere(
-                            (t) => t['value'] == _selectedTemplate,
-                          )['description']!,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.blue.shade900,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _generateResume,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.all(16),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text(
-                                'Generate Resume',
-                                style: TextStyle(fontSize: 16),
-                              ),
-                      ),
-                    ],
-                  ),
+            if (_error != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: MaterialBanner(
+                  content: Text(_error!),
+                  backgroundColor: Colors.red[100],
+                  actions: [
+                    TextButton(
+                      onPressed: () => setState(() => _error = null),
+                      child: const Text('DISMISS'),
+                    ),
+                  ],
                 ),
+              ),
+            // --- Resume Template Dropdown ---
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Resume Template', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                DropdownButtonFormField<String>(
+                  value: _selectedTemplate,
+                  items: _templates
+                      .map((t) => DropdownMenuItem<String>(
+                            value: t['value'],
+                            child: Text(t['name']!),
+                          ))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedTemplate = val);
+                  },
+                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _templates.firstWhere((t) => t['value'] == _selectedTemplate)['description']!,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                hintText: 'e.g. Jane Doe',
+              ),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _educationController,
+              decoration: const InputDecoration(
+                labelText: 'Education',
+                hintText: 'e.g. B.S. in Computer Science, University of X',
               ),
             ),
-            if (_generatedResume != null) ...[
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _experienceController,
+              decoration: const InputDecoration(
+                labelText: 'Experience',
+                hintText: 'e.g. 3 years at Acme Corp as Software Engineer',
+              ),
+              minLines: 2,
+              maxLines: 4,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _skillsController,
+              decoration: const InputDecoration(
+                labelText: 'Skills (comma or multiline)',
+                hintText: 'e.g. Python, Flutter, Project Management',
+              ),
+              minLines: 1,
+              maxLines: 3,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _loading ? null : _submit,
+              child: _loading
+                  ? const SizedBox(
+                      width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Generate Resume'),
+            ),
+            const SizedBox(height: 24),
+            if (_resume != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Generated Resume:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: SelectableText(
+                      _resume!,
+                      style: const TextStyle(fontFamily: 'monospace'),
+                      showCursor: true,
+                      cursorWidth: 2,
+                      cursorColor: Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Generated Resume',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          Chip(
-                            label: Text(
-                              _templates.firstWhere(
-                                (t) => t['value'] == _selectedTemplate,
-                              )['name']!,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            backgroundColor: Colors.blue.shade100,
-                          ),
-                        ],
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await Clipboard.setData(ClipboardData(text: _resume!));
+                          setState(() => _copied = true);
+                          Future.delayed(const Duration(seconds: 2), () {
+                            if (mounted) setState(() => _copied = false);
+                          });
+                        },
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy'),
                       ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
+                      if (_copied)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 12),
+                          child: Text('Copied!', style: TextStyle(color: Colors.green)),
                         ),
-                        child: MarkdownBody(
-                          data: _generatedResume!,
-                          styleSheet: MarkdownStyleSheet(
-                            h1: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                            h2: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                            p: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                              height: 1.5,
-                            ),
-                            listBullet: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 32),
+                  // --- Optimize for Job Posting Panel ---
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blue.shade100),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.tune, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            const Text('Optimize for Job Posting', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            if (_optMock)
+                              Container(
+                                margin: const EdgeInsets.only(left: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text('Mock Mode', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _jdController,
+                          minLines: 3,
+                          maxLines: 8,
+                          decoration: const InputDecoration(
+                            labelText: 'Job Description',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _optimizing ? null : _analyzeMatch,
+                          child: _optimizing
+                              ? const SizedBox(
+                                  width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Analyze Match'),
+                        ),
+                        const SizedBox(height: 16),
+                        if (_optError != null)
+                          Text(_optError!, style: const TextStyle(color: Colors.red)),
+                        if (_optResult != null)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if ((_optResult!['strengths'] as List?)?.isNotEmpty ?? false)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Strengths:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    ...(_optResult!['strengths'] as List)
+                                        .map<Widget>((s) => Row(children: [const Text('• '), Expanded(child: Text(s.toString()))]))
+                                        .toList(),
+                                    const SizedBox(height: 10),
+                                  ],
+                                ),
+                              if ((_optResult!['missing_keywords'] as List?)?.isNotEmpty ?? false)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Missing Keywords:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 6,
+                                      children: (_optResult!['missing_keywords'] as List)
+                                          .map<Widget>((kw) => Chip(label: Text(kw.toString())))
+                                          .toList(),
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+                                ),
+                              if ((_optResult!['suggested_edits'] as String?)?.isNotEmpty ?? false)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Suggested Edits:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    ...((_optResult!['suggested_edits'] as String)
+                                            .split('\n')
+                                            .where((l) => l.trim().isNotEmpty))
+                                        .map((l) => Row(children: [const Text('• '), Expanded(child: Text(l.trim()))]))
+                                        .toList(),
+                                  ],
+                                ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
           ],
         ),
       ),
