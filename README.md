@@ -1,232 +1,245 @@
-# Cover Letter – Test Checklist
-
-Manual test scenarios for the Cover Letter feature (both mock mode and real API):
-
-1. **Valid Submit (Mock & Real API):**
-   - Fill all fields with realistic data and submit.
-   - Expect a generated cover letter to appear with no errors.
-   - In mock mode, the letter should be deterministic and not AI-generated.
-
-2. **Missing Required Fields:**
-   - Leave Name, Company, or Role empty and try to submit.
-   - Expect a validation error and no request sent.
-
-3. **Long Job Description:**
-   - Enter a very long job description (e.g., 1000+ characters).
-   - Submit and verify the cover letter is generated and not truncated.
-
-4. **Network Offline Case:**
-   - Disconnect from the network or stop the backend server.
-   - Submit the form and expect a friendly error banner about network issues.
-
-5. **Mock-Mode Banner Present:**
-   - With no OpenAI API key set, submit a valid form.
-   - Confirm the generated letter is a mock and notifies the user (e.g., deterministic content, not AI-generated).
-
-6. **Copy-to-Clipboard Works:**
-   - After a cover letter is generated, click the Copy button.
-   - Confirm the button shows a "Copied!" message and the clipboard contains the full letter text.
-
-Repeat these checks for both mock mode (no API key) and real API mode (valid OpenAI key set).
-
 # AI-Powered Resume & Cover Letter Builder
 
-## 📌 Description
-This project is a web application that helps users generate tailored **resumes** and **cover letters** using AI.  
-It takes user input (experience, education, skills) and job descriptions, then produces professional, export-ready documents.  
+An intelligent web application that helps users create professional, tailored resumes and cover letters using AI. The app takes user input (experience, education, skills) along with job descriptions and produces polished, export-ready documents. It features resume keyword optimization, multiple template styles, PDF export capabilities, and draft saving—all accessible through a modern Flutter web interface backed by a Flask API.
 
 ## 🛠 Tech Stack
-- **Python (Flask or FastAPI)** – backend  
-- **Flutter (Dart, running as a web app)** – frontend  
-- **OpenAI / Claude API** – AI-powered content generation  
-- **Export libraries** – PDF/Word output  
 
-## 🚀 Getting Started
+| Layer      | Technology                                          |
+|------------|-----------------------------------------------------|
+| Frontend   | Flutter Web (Dart 3.0+)                             |
+| Backend    | Python 3.8+ with Flask 3.0                          |
+| AI         | OpenAI GPT-3.5 / Google Gemini (optional)           |
+| PDF Export | ReportLab                                           |
+| Storage    | Browser localStorage (drafts)                       |
+
+## 🚀 Prerequisites & Quickstart
 
 ### Prerequisites
-- Python 3.8 or higher
-- Flutter SDK 3.0 or higher
-- OpenAI API key (optional - app works with placeholder format without it)
+
+- **Python 3.8+** – for the backend API
+- **Flutter SDK 3.0+** – for the web frontend
+- **Chrome browser** – recommended for development
+- **OpenAI or Gemini API key** (optional) – enables real AI generation; app works in mock mode without it
 
 ### Backend Setup
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/BrianDornellas/resume-ai-builder.git
-   cd resume-ai-builder
-   ```
+```bash
+# 1. Navigate to backend directory
+cd backend
 
-2. Set up the backend:
-   ```bash
-   cd backend
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
+# 2. Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-3. (Optional) Create a `.env` file in the `backend` directory for AI-powered resume generation:
-   ```bash
-   cp .env.example .env
-   ```
-   Then edit `.env` and add your OpenAI API key:
-   ```
-   OPENAI_API_KEY=your_actual_api_key_here
-   FLASK_DEBUG=True
-   ```
-   Note: The app works without an API key using a placeholder format. Set `FLASK_DEBUG=False` in production environments.
+# 3. Install dependencies
+pip install -r requirements.txt
 
-4. Run the backend server:
-   ```bash
-   python app.py
-   ```
-   The backend will run on `http://localhost:5000`
+# 4. (Optional) Configure environment variables
+cp .env.example .env
+# Edit .env and set:
+#   OPENAI_API_KEY=your_key_here   (for OpenAI)
+#   GEMINI_API_KEY=your_key_here   (for Google Gemini)
+#   FLASK_DEBUG=True               (for development)
+
+# 5. Run the server
+python app.py
+# Server runs at http://localhost:5000
+```
 
 ### Frontend Setup
 
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
+```bash
+# 1. Navigate to frontend directory
+cd frontend
 
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
+# 2. Verify Flutter installation
+flutter doctor
 
-3. Run the Flutter web app:
-   ```bash
-   flutter run -d chrome
-   ```
+# 3. Install dependencies
+flutter pub get
 
-### Using the Application
+# 4. Run the web app
+flutter run -d chrome
+```
 
-1. Make sure the backend is running on `http://localhost:5000`
-2. Open the Flutter web app in your browser
-3. Fill in the form with your information:
-   - **Name**: Your full name
-   - **Education**: Your educational background
-   - **Experience**: Your work experience
-   - **Skills**: Your technical and professional skills
-   - **Template**: Choose between Chronological or Functional layout
-4. Click "Generate Resume"
-5. The AI-generated resume will appear below the form in beautifully formatted Markdown
+## 📡 API Endpoints
 
-#### Resume Templates
+| Method | Path                    | Description                                          |
+|--------|-------------------------|------------------------------------------------------|
+| GET    | `/health`               | Health check – returns `{"status": "healthy"}`       |
+| GET    | `/health/pdf`           | PDF health check – returns available templates       |
+| POST   | `/generate-resume`      | Generate a resume from user profile and template     |
+| POST   | `/generate-cover-letter`| Generate a cover letter for a specific job           |
+| POST   | `/optimize-resume`      | Analyze resume against job description for keywords  |
+| POST   | `/export-pdf`           | Export resume or cover letter as PDF                 |
 
-**Chronological Template:**
-- Emphasizes work history in reverse chronological order
-- Ideal for traditional career progression
-- Best for candidates with consistent work history
+### Example: Generate Resume
 
-**Functional Template:**
-- Emphasizes skills and competencies over timeline
-- Ideal for career changers or those with employment gaps
-- Best for highlighting transferable skills
+```bash
+curl -X POST http://localhost:5000/generate-resume \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "education": "BS Computer Science, State University, 2020",
+    "experience": "Software Engineer at Tech Corp (2020-2023)",
+    "skills": "Python, JavaScript, React, Flask",
+    "template": "chronological"
+  }'
+```
 
-For detailed usage instructions and examples, see [USAGE_GUIDE.md](USAGE_GUIDE.md)
+## 🤖 Mock Mode vs Real AI Mode
 
-For architecture and technical details, see [ARCHITECTURE.md](ARCHITECTURE.md)
+The application operates in two modes:
+
+| Mode     | Trigger                                | Behavior                                           |
+|----------|----------------------------------------|----------------------------------------------------|
+| **Mock** | No API key in `.env`                   | Returns deterministic, template-based output       |
+| **Real** | `OPENAI_API_KEY` or `GEMINI_API_KEY` set | Calls AI API for dynamic, personalized content   |
+
+**Mock mode** is ideal for:
+- Development and testing without API costs
+- Demos where consistent output is preferred
+- Environments where API access is restricted
+
+**Real AI mode** provides:
+- Personalized, context-aware content
+- Better keyword optimization suggestions
+- More natural language in generated documents
 
 ## 📄 PDF Export
 
-The application supports exporting resumes and cover letters as PDF files with two template styles:
+Export resumes and cover letters as professional PDF documents:
+
+### Available Templates
 
 - **Classic**: Traditional layout with serif fonts and horizontal rules
 - **Modern**: Contemporary layout with sans-serif fonts and accent colors
 
-### PDF Export API
+### API Usage
 
-**Endpoint**: `POST /export-pdf`
-
-**Request Body**:
-```json
-{
-  "document_type": "resume" | "cover_letter",
-  "content": "Your document content (plain text or Markdown)",
-  "template": "classic" | "modern"
-}
+```bash
+curl -X POST http://localhost:5000/export-pdf \
+  -H "Content-Type: application/json" \
+  -d '{
+    "document_type": "resume",
+    "content": "Your resume content here...",
+    "template": "modern"
+  }' --output resume.pdf
 ```
-
-**Response**: PDF binary stream with `application/pdf` content type.
 
 ### Health Check
 
-**Endpoint**: `GET /health/pdf`
-
-**Response**:
-```json
-{
-  "pdf_templates": ["classic", "modern"]
-}
+```bash
+curl http://localhost:5000/health/pdf
+# Returns: {"pdf_templates": ["classic", "modern"]}
 ```
 
-### Smoke Test Script
+## 💾 Drafts & localStorage
 
-A smoke test script is provided to verify the PDF export functionality:
+Drafts are automatically saved to your browser's localStorage:
+
+- **Save**: Click "Save Draft" to capture all form fields and generated content
+- **Load**: Click "My Drafts" to browse and restore previous work
+- **Manage**: Rename or delete drafts from the drafts dialog
+
+**Important Notes:**
+- Drafts are stored locally and do not sync across devices
+- Clearing browser data will delete all saved drafts
+- Resume and cover letter drafts are stored separately
+
+## 🔧 Quick Dev Scripts
+
+Convenience scripts for rapid development:
 
 ```bash
-# Prerequisites: Backend server must be running
-cd backend && python app.py &
+# Start backend (creates venv if needed, installs deps, runs Flask)
+./backend/start.sh
 
-# Install requests if needed
-pip install requests
+# Start frontend (runs Flutter web on Chrome)
+./frontend/start.sh
 
-# Run the smoke test (saves output to out.pdf by default)
-python scripts/smoke_pdf.py
-
-# Options:
-python scripts/smoke_pdf.py --template modern --output my_resume.pdf
-python scripts/smoke_pdf.py --type cover_letter --template classic
+# Smoke test (checks /health, /health/pdf, and /generate-resume mock)
+./scripts/smoke.sh
 ```
 
-## 📋 Roadmap
+See the scripts for details on what each one does.
 
-Week 1: Repo + README setup ✅
+## 🐛 Troubleshooting
 
-Week 2: Resume generation (basic text) ✅
+### CORS Errors
 
-Week 3: Resume templates ✅
+**Symptom**: Browser console shows "Access-Control-Allow-Origin" errors.
 
-Week 4: Cover letter generation ✅
+**Solution**: Ensure the backend is running with CORS enabled (it is by default via `flask-cors`). Check that you're accessing the frontend from a proper origin, not `file://`.
 
-Week 5: Keyword optimization ✅
+### 500 Internal Server Errors
 
-Week 6: PDF export ✅
+**Symptom**: API returns 500 status code.
 
-Week 7: Save & polish features ✅
+**Possible causes**:
+1. Missing required fields in request body
+2. Invalid JSON payload
+3. Backend dependencies not installed
 
-Week 8: Finalize & demo
+**Debug steps**:
+```bash
+# Check backend logs
+FLASK_DEBUG=True python app.py
 
-## 💾 Working with Drafts
+# Verify request format
+curl -X POST http://localhost:5000/generate-resume \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test","education":"Test","experience":"Test","skills":"Test"}'
+```
 
-The application supports saving and loading drafts for both resumes and cover letters. Drafts are stored in your browser's localStorage, so they persist between sessions.
+### Bad JSON / Parse Errors
 
-### Saving Drafts
+**Symptom**: "Request body must be valid JSON" error.
 
-1. Fill in any fields on the Resume or Cover Letter form
-2. Click the **"Save Draft"** button in the top-right corner
-3. A confirmation message will appear when the draft is saved
+**Solution**: Ensure your request:
+1. Has `Content-Type: application/json` header
+2. Contains valid JSON (no trailing commas, proper quotes)
+3. Includes all required fields as strings
 
-Drafts automatically capture:
-- All form field values (name, education, experience, skills, etc.)
-- The selected template
-- Any generated resume or cover letter text
+### Flutter Web Not Loading
 
-### Loading Drafts
+**Symptom**: Blank page or loading spinner.
 
-1. Click the **"My Drafts"** button to open the drafts dialog
-2. Browse your saved drafts (sorted by most recent)
-3. Click on a draft to load it into the form
-4. The form fields and any generated content will be restored
+**Solution**:
+```bash
+# Clean and rebuild
+cd frontend
+flutter clean
+flutter pub get
+flutter run -d chrome --web-port=8080
+```
 
-### Managing Drafts
+### PDF Generation Fails
 
-From the My Drafts dialog, you can:
-- **Rename**: Click the edit icon to change a draft's title
-- **Delete**: Click the trash icon to permanently remove a draft
-- **Load**: Click anywhere on a draft card to load it
+**Symptom**: PDF export returns error or corrupted file.
 
-### Notes
+**Solution**: Ensure ReportLab is installed:
+```bash
+pip install reportlab==4.2.0
+```
 
-- Drafts are stored locally in your browser and are not synced across devices
-- Clearing your browser data will delete all saved drafts
-- Each draft type (resume/cover letter) has its own separate list
+## 📋 Additional Documentation
+
+- [USAGE_GUIDE.md](USAGE_GUIDE.md) – Detailed usage instructions and examples
+- [ARCHITECTURE.md](ARCHITECTURE.md) – Technical architecture and design decisions
+- [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) – Pre-release verification checklist
+
+## 📜 License & Credits
+
+**Course**: CMPS 357 – Software Engineering
+
+**Contributors**: Brian Dornellas
+
+**Acknowledgments**:
+- OpenAI for GPT API
+- Google for Gemini API
+- Flutter and Flask communities
+
+---
+
+*Built with ❤️ for CMPS 357*
