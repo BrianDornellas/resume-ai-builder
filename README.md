@@ -126,6 +126,58 @@ For detailed usage instructions and examples, see [USAGE_GUIDE.md](USAGE_GUIDE.m
 
 For architecture and technical details, see [ARCHITECTURE.md](ARCHITECTURE.md)
 
+## 📄 PDF Export
+
+The application supports exporting resumes and cover letters as PDF files with two template styles:
+
+- **Classic**: Traditional layout with serif fonts and horizontal rules
+- **Modern**: Contemporary layout with sans-serif fonts and accent colors
+
+### PDF Export API
+
+**Endpoint**: `POST /export-pdf`
+
+**Request Body**:
+```json
+{
+  "document_type": "resume" | "cover_letter",
+  "content": "Your document content (plain text or Markdown)",
+  "template": "classic" | "modern"
+}
+```
+
+**Response**: PDF binary stream with `application/pdf` content type.
+
+### Health Check
+
+**Endpoint**: `GET /health/pdf`
+
+**Response**:
+```json
+{
+  "pdf_templates": ["classic", "modern"]
+}
+```
+
+### Smoke Test Script
+
+A smoke test script is provided to verify the PDF export functionality:
+
+```bash
+# Prerequisites: Backend server must be running
+cd backend && python app.py &
+
+# Install requests if needed
+pip install requests
+
+# Run the smoke test (saves output to out.pdf by default)
+python scripts/smoke_pdf.py
+
+# Options:
+python scripts/smoke_pdf.py --template modern --output my_resume.pdf
+python scripts/smoke_pdf.py --type cover_letter --template classic
+```
+
 ## 📋 Roadmap
 
 Week 1: Repo + README setup ✅
@@ -138,7 +190,7 @@ Week 4: Cover letter generation
 
 Week 5: Keyword optimization
 
-Week 6: PDF export
+Week 6: PDF export ✅
 
 Week 7: Save & polish features
 

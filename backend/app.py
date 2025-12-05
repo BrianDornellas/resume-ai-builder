@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import os
 from openai import OpenAI
+from pdf_generator import generate_pdf, PDF_TEMPLATES
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Flutter web app
@@ -17,6 +18,65 @@ def get_openai_client():
 def health():
     """Health check endpoint"""
     return jsonify({"status": "healthy"}), 200
+
+
+@app.route('/health/pdf', methods=['GET'])
+def health_pdf():
+    """Health check endpoint for PDF templates"""
+    return jsonify({"pdf_templates": PDF_TEMPLATES}), 200
+
+
+@app.route('/export-pdf', methods=['POST'])
+def export_pdf():
+    """
+    Export content as PDF.
+    Expected JSON format:
+    {
+        "document_type": "resume" | "cover_letter",
+        "content": string,
+        "template": "classic" | "modern"
+    }
+    Returns: application/pdf binary stream
+    """
+    try:
+        data = request.get_json(silent=True)
+        
+        # Validate required fields
+        if not data:
+            return jsonify({"error": "Request body is required"}), 400
+        
+        content = data.get('content')
+        if not content or not content.strip():
+            return jsonify({"error": "Content is required and cannot be empty"}), 400
+        
+        document_type = data.get('document_type', 'resume')
+        if document_type not in ('resume', 'cover_letter'):
+            return jsonify({"error": "document_type must be 'resume' or 'cover_letter'"}), 400
+        
+        template = data.get('template', 'classic')
+        if template not in PDF_TEMPLATES:
+            return jsonify({"error": f"template must be one of: {PDF_TEMPLATES}"}), 400
+        
+        # Generate PDF
+        pdf_bytes = generate_pdf(content, template)
+        
+        # Determine filename prefix
+        filename_prefix = "resume" if document_type == "resume" else "cover_letter"
+        
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename_prefix}.pdf"',
+                'Content-Length': str(len(pdf_bytes)),
+            }
+        )
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"Error generating PDF: {str(e)}")
+        return jsonify({"error": "An error occurred while generating the PDF"}), 500
 
 @app.route('/generate-resume', methods=['POST'])
 def generate_resume():

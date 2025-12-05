@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:html' as html;
 import '../services/api_client.dart';
 
 class ResumeFormScreen extends StatefulWidget {
@@ -43,6 +44,14 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
   Map<String, dynamic>? _optResult;
   String? _optError;
   bool _optMock = false;
+
+  // PDF export state
+  bool _exporting = false;
+  String _pdfTemplate = 'classic';
+  final List<Map<String, String>> _pdfTemplates = [
+    {'value': 'classic', 'name': 'Classic'},
+    {'value': 'modern', 'name': 'Modern'},
+  ];
 
   @override
   void dispose() {
@@ -128,6 +137,57 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       setState(() {
         _optimizing = false;
       });
+    }
+  }
+
+  Future<void> _exportPdf() async {
+    if (_resume == null || _resume!.isEmpty) return;
+    
+    setState(() {
+      _exporting = true;
+    });
+    
+    try {
+      final pdfBytes = await ApiClient().exportPdf(
+        documentType: 'resume',
+        content: _resume!,
+        template: _pdfTemplate,
+      );
+      
+      // Generate filename with name and date
+      final name = _nameController.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+      final date = DateTime.now().toIso8601String().substring(0, 10).replaceAll('-', '');
+      final filename = 'resume_${name}_$date.pdf';
+      
+      // Trigger download in browser
+      final blob = html.Blob([pdfBytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute('download', filename)
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF downloaded: $filename'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to export PDF: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _exporting = false;
+        });
+      }
     }
   }
 
@@ -269,6 +329,75 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                           padding: EdgeInsets.only(left: 12),
                           child: Text('Copied!', style: TextStyle(color: Colors.green)),
                         ),
+                      const SizedBox(width: 16),
+                      // PDF Export dropdown button
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _exporting ? null : _exportPdf,
+                              icon: _exporting
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.picture_as_pdf),
+                              label: const Text('Download PDF'),
+                              style: ElevatedButton.styleFrom(
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
+                                ),
+                              ),
+                            ),
+                            PopupMenuButton<String>(
+                              initialValue: _pdfTemplate,
+                              onSelected: (value) {
+                                setState(() => _pdfTemplate = value);
+                              },
+                              itemBuilder: (context) => _pdfTemplates
+                                  .map((t) => PopupMenuItem<String>(
+                                        value: t['value'],
+                                        child: Row(
+                                          children: [
+                                            if (_pdfTemplate == t['value'])
+                                              const Icon(Icons.check, size: 18)
+                                            else
+                                              const SizedBox(width: 18),
+                                            const SizedBox(width: 8),
+                                            Text(t['name']!),
+                                          ],
+                                        ),
+                                      ))
+                                  .toList(),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _pdfTemplates.firstWhere((t) => t['value'] == _pdfTemplate)['name']!,
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.arrow_drop_down,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 32),
