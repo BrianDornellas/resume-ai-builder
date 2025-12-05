@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../services/api_client.dart';
 import '../services/pdf_download_web.dart';
 import '../services/local_store.dart';
@@ -203,11 +204,24 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
         resumeText: _resume!,
         jobDescription: _jdController.text.trim(),
       );
+      final edits = result['suggested_edits'];
+      final missing = result['missing_keywords'];
+      final strengths = result['strengths'];
+
+      bool mock = false;
+      // Detect mock mode safely
+      if (edits is List && edits.isNotEmpty) {
+        if (edits.any((e) => e.toString().contains('Highlight more relevant skills'))) {
+          mock = true;
+        }
+      }
+      if (missing is List && missing.isNotEmpty && (strengths is List && strengths.isEmpty)) {
+        mock = true;
+      }
       setState(() {
         _optResult = result;
         _optError = null;
-        _optMock = (result['suggested_edits'] != null && (result['suggested_edits'] as String).contains('Highlight more relevant skills')) ||
-            (result['missing_keywords'] is List && (result['missing_keywords'] as List).isNotEmpty && (result['strengths'] as List).isEmpty);
+        _optMock = mock;
       });
     } catch (e) {
       setState(() {
@@ -526,9 +540,11 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade200),
           ),
-          child: SelectableText(
-            _resume!,
-            style: const TextStyle(fontFamily: 'monospace', height: 1.5),
+          child: SingleChildScrollView(
+            child: MarkdownBody(
+              data: _resume!,
+              selectable: true,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -711,22 +727,20 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                           const SizedBox(height: 12),
                         ],
                       ),
-                    if ((_optResult!['suggested_edits'] as String?)?.isNotEmpty ?? false)
+                    if ((_optResult!['suggested_edits'] as List?)?.isNotEmpty ?? false)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text('Suggested Edits:', style: TextStyle(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
-                          ...((_optResult!['suggested_edits'] as String)
-                                  .split('\n')
-                                  .where((l) => l.trim().isNotEmpty))
-                              .map((l) => Padding(
+                          ...List<String>.from(_optResult!['suggested_edits'])
+                              .map((edit) => Padding(
                                     padding: const EdgeInsets.only(left: 8, bottom: 4),
                                     child: Row(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         const Text('• '),
-                                        Expanded(child: Text(_cleanSuggestionText(l))),
+                                        Expanded(child: Text(_cleanSuggestionText(edit))),
                                       ],
                                     ),
                                   ))
