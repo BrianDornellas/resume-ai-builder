@@ -3,6 +3,7 @@ PDF generation module for resumes and cover letters.
 Provides two templates: 'classic' and 'modern'.
 """
 
+import re
 from io import BytesIO
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -235,6 +236,5 @@ def _escape_xml(text: str) -> str:
 
 def _convert_bold(text: str) -> str:
     """Convert **text** to placeholder markers for bold (to be converted after escaping)."""
-    import re
     # Replace **text** with placeholder markers
     return re.sub(r'\*\*([^*]+)\*\*', r'__BOLD_START__\1__BOLD_END__', text)

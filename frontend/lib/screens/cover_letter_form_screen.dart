@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:html' as html;
 import '../services/api_client.dart';
+import '../services/pdf_download_web.dart';
 
 class CoverLetterFormScreen extends StatefulWidget {
   const CoverLetterFormScreen({super.key});
@@ -99,18 +99,9 @@ class _CoverLetterFormScreenState extends State<CoverLetterFormScreen> {
         template: _pdfTemplate,
       );
       
-      // Generate filename with name and date
-      final name = _nameController.text.trim().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
-      final date = DateTime.now().toIso8601String().substring(0, 10).replaceAll('-', '');
-      final filename = 'cover_${name}_$date.pdf';
-      
-      // Trigger download in browser
-      final blob = html.Blob([pdfBytes], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.AnchorElement(href: url)
-        ..setAttribute('download', filename)
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      // Generate filename and trigger download
+      final filename = generatePdfFilename('cover', _nameController.text);
+      downloadPdfInBrowser(pdfBytes, filename);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
