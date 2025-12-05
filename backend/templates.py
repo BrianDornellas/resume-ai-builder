@@ -138,28 +138,49 @@ Please create a well-formatted, professional resume."""
 
 
 def _create_functional_prompt(name, education, experience, skills):
-    """Create prompt for functional resume format."""
-    prompt = f"""Generate a professional resume in Markdown format using a FUNCTIONAL layout.
+    """Create prompt for a functional resume format."""
+    prompt = f"""Generate a professional resume in Markdown format using a FUNCTIONAL-STYLE layout.
+        Candidate Information:
+        - Name: {name}
+        - Education: {education}
+        - Experience: {experience}
+        - Skills: {skills}
 
-**Candidate Information:**
-- Name: {name}
-- Education: {education}
-- Experience: {experience}
-- Skills: {skills}
+        Requirements:
+        1. Use clean Markdown formatting:
+        - Use "# " for the candidate name as the main header.
+        - Use "## " for section headers.
+        - Use bullet points for duties, achievements, and skills.
+        2. The sections MUST appear in this order, and each section name should be exactly:
 
-**Requirements:**
-1. Use Markdown formatting (headers, bold, lists, etc.)
-2. Follow functional format with sections in this order:
-   - Name (as H1 header)
-   - Professional Summary (brief, 2-3 sentences)
-   - Core Competencies & Skills (grouped by category)
-   - Relevant Experience (organized by skill areas, not chronologically)
-   - Education & Credentials
-3. Emphasize transferable skills and competencies
-4. Use emojis sparingly for section headers
-5. Make it ATS-friendly and professional
-6. Group experiences by skill/competency area rather than by date
-7. Keep the total length reasonable for a resume
+        # {name}
+        ## Professional Summary
+        ## Key Skills
+        ## Professional Experience
+        ## Education
 
-Please create a well-formatted, professional resume."""
+        3. Professional Summary:
+        - 2–3 concise sentences summarizing strengths, teaching/communication ability, and overall value.
+        4. Key Skills:
+        - Present skills in a concise, resume-like way.
+        - Use either short bullet points or grouped bullets like:
+            - Classroom Management, Curriculum Development, Student Support
+            - Record Keeping, Microsoft Office, Data Entry
+        5. Professional Experience:
+        - Even though this is a functional-style resume, it should still LOOK like a normal resume section.
+        - For each role, use a single line like:
+            **JOB TITLE** | Organization | Dates
+        - Under each role, include 3–6 bullet points describing responsibilities and achievements.
+        - Use action verbs and concrete outcomes where possible.
+        6. Education:
+        - Use 1–3 short lines, e.g.:
+            UNIVERSITY NAME | Degree, Graduation date
+            - Optional GPA or minor on a separate line.
+        7. Keep the layout compact and similar in density to a standard chronological resume.
+        8. Do NOT use tables or multi-column layouts.
+        9. Keep it ATS-friendly, professional, and easy to skim.
+
+        Return ONLY the Markdown resume, with no extra explanation."""
     return prompt
+
+
