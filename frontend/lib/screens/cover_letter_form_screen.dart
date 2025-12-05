@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/api_client.dart';
+import '../services/pdf_download_web.dart';
 
 class CoverLetterFormScreen extends StatefulWidget {
   const CoverLetterFormScreen({super.key});
@@ -22,6 +23,14 @@ class _CoverLetterFormScreenState extends State<CoverLetterFormScreen> {
   String? _coverLetter;
   String? _error;
   bool _copied = false;
+
+  // PDF export state
+  bool _exporting = false;
+  String _pdfTemplate = 'classic';
+  final List<Map<String, String>> _pdfTemplates = [
+    {'value': 'classic', 'name': 'Classic'},
+    {'value': 'modern', 'name': 'Modern'},
+  ];
 
   @override
   void dispose() {
@@ -73,6 +82,48 @@ class _CoverLetterFormScreenState extends State<CoverLetterFormScreen> {
       setState(() {
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _exportPdf() async {
+    if (_coverLetter == null || _coverLetter!.isEmpty) return;
+    
+    setState(() {
+      _exporting = true;
+    });
+    
+    try {
+      final pdfBytes = await ApiClient().exportPdf(
+        documentType: 'cover_letter',
+        content: _coverLetter!,
+        template: _pdfTemplate,
+      );
+      
+      // Generate filename and trigger download
+      final filename = generatePdfFilename('cover', _nameController.text);
+      downloadPdfInBrowser(pdfBytes, filename);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF downloaded: $filename'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to export PDF: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _exporting = false;
+        });
+      }
     }
   }
 
@@ -189,6 +240,75 @@ class _CoverLetterFormScreenState extends State<CoverLetterFormScreen> {
                           padding: EdgeInsets.only(left: 12),
                           child: Text('Copied!', style: TextStyle(color: Colors.green)),
                         ),
+                      const SizedBox(width: 16),
+                      // PDF Export dropdown button
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _exporting ? null : _exportPdf,
+                              icon: _exporting
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.picture_as_pdf),
+                              label: const Text('Download PDF'),
+                              style: ElevatedButton.styleFrom(
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
+                                ),
+                              ),
+                            ),
+                            PopupMenuButton<String>(
+                              initialValue: _pdfTemplate,
+                              onSelected: (value) {
+                                setState(() => _pdfTemplate = value);
+                              },
+                              itemBuilder: (context) => _pdfTemplates
+                                  .map((t) => PopupMenuItem<String>(
+                                        value: t['value'],
+                                        child: Row(
+                                          children: [
+                                            if (_pdfTemplate == t['value'])
+                                              const Icon(Icons.check, size: 18)
+                                            else
+                                              const SizedBox(width: 18),
+                                            const SizedBox(width: 8),
+                                            Text(t['name']!),
+                                          ],
+                                        ),
+                                      ))
+                                  .toList(),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _pdfTemplates.firstWhere((t) => t['value'] == _pdfTemplate)['name']!,
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.arrow_drop_down,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ],

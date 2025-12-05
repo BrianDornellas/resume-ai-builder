@@ -1,5 +1,6 @@
 
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
@@ -65,6 +66,40 @@ class ApiClient {
       }),
     );
     return _decodeResponse(response);
+  }
+
+  /// Export content to PDF.
+  /// Returns the PDF bytes on success, or throws an exception on error.
+  Future<Uint8List> exportPdf({
+    required String documentType,
+    required String content,
+    required String template,
+  }) async {
+    final url = Uri.parse('$_baseUrl/export-pdf');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'document_type': documentType,
+        'content': content,
+        'template': template,
+      }),
+    );
+    
+    if (response.statusCode == 200) {
+      return response.bodyBytes;
+    } else {
+      // Try to parse error message from JSON
+      try {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(data['error'] ?? 'Failed to export PDF');
+      } catch (e) {
+        if (e is Exception && e.toString().contains('Failed to export PDF')) {
+          rethrow;
+        }
+        throw Exception('Server error: ${response.statusCode}');
+      }
+    }
   }
 
   Map<String, dynamic> _decodeResponse(http.Response response) {

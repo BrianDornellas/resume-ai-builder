@@ -1,22 +1,102 @@
-from flask import Flask, request, jsonify
+
+import json
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import os
-from openai import OpenAI
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
+
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+from pdf_generator import generate_pdf, PDF_TEMPLATES
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Flutter web app
 
 # Initialize OpenAI client - will be None if API key is not set
+
 def get_openai_client():
     api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
+    if not api_key or not OpenAI:
         return None
     return OpenAI(api_key=api_key)
+
+def get_gemini_client():
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key or not genai:
+        return None
+    genai.configure(api_key=api_key)
+    # Use the correct Gemini model name
+    return genai.GenerativeModel('models/gemini-2.5-flash')
 
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
     return jsonify({"status": "healthy"}), 200
+
+
+@app.route('/health/pdf', methods=['GET'])
+def health_pdf():
+    """Health check endpoint for PDF templates"""
+    return jsonify({"pdf_templates": PDF_TEMPLATES}), 200
+
+
+@app.route('/export-pdf', methods=['POST'])
+def export_pdf():
+    """
+    Export content as PDF.
+    Expected JSON format:
+    {
+        "document_type": "resume" | "cover_letter",
+        "content": string,
+        "template": "classic" | "modern"
+    }
+    Returns: application/pdf binary stream
+    """
+    try:
+        data = request.get_json(silent=True)
+        
+        # Validate required fields
+        if not data:
+            return jsonify({"error": "Request body is required"}), 400
+        
+        content = data.get('content')
+        if not content or not content.strip():
+            return jsonify({"error": "Content is required and cannot be empty"}), 400
+        
+        document_type = data.get('document_type', 'resume')
+        if document_type not in ('resume', 'cover_letter'):
+            return jsonify({"error": "document_type must be 'resume' or 'cover_letter'"}), 400
+        
+        template = data.get('template', 'classic')
+        if template not in PDF_TEMPLATES:
+            return jsonify({"error": f"template must be one of: {PDF_TEMPLATES}"}), 400
+        
+        # Generate PDF
+        pdf_bytes = generate_pdf(content, template)
+        
+        # Determine filename prefix
+        filename_prefix = "resume" if document_type == "resume" else "cover_letter"
+        
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename_prefix}.pdf"',
+                'Content-Length': str(len(pdf_bytes)),
+            }
+        )
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"Error generating PDF: {str(e)}")
+        return jsonify({"error": "An error occurred while generating the PDF"}), 500
 
 @app.route('/generate-resume', methods=['POST'])
 def generate_resume():
@@ -47,19 +127,17 @@ def generate_resume():
         skills = data['skills']
         template = data.get('template', 'chronological')  # default to chronological
         
-        # Check if OpenAI API key is configured
+        # Check for Gemini, then OpenAI, then fallback to mock
+        gemini = get_gemini_client()
         client = get_openai_client()
-        
-        if not client:
-            # Generate a mock resume in the requested template format
-            from templates import format_resume_mock
-            resume_text = format_resume_mock(name, education, experience, skills, template)
-        else:
-            # Create structured prompt for AI based on template
+        if gemini:
             from templates import create_ai_prompt
             prompt = create_ai_prompt(name, education, experience, skills, template)
-
-            # Call OpenAI API
+            response = gemini.generate_content(prompt)
+            resume_text = response.text
+        elif client:
+            from templates import create_ai_prompt
+            prompt = create_ai_prompt(name, education, experience, skills, template)
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
@@ -69,10 +147,10 @@ def generate_resume():
                 temperature=0.7,
                 max_tokens=1000
             )
-            
-            # Extract generated resume
             resume_text = response.choices[0].message.content
-        
+        else:
+            from templates import format_resume_mock
+            resume_text = format_resume_mock(name, education, experience, skills, template)
         return jsonify({
             "success": True,
             "resume": resume_text,
@@ -132,10 +210,26 @@ def generate_cover_letter():
             if field not in data:
                 return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
 
+        gemini = get_gemini_client()
         client = get_openai_client()
         prompt = build_cover_letter_prompt(data)
-
-        if not client:
+        if gemini:
+            response = gemini.generate_content(prompt)
+            cover_letter = response.text
+            return jsonify({"success": True, "cover_letter": cover_letter}), 200
+        elif client:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a professional career coach. Write clear, concise, and tailored cover letters."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=800
+            )
+            cover_letter = response.choices[0].message.content
+            return jsonify({"success": True, "cover_letter": cover_letter}), 200
+        else:
             # Deterministic mock cover letter
             mock_letter = (
                 f"Dear {data['company']} Hiring Team,\n\n"
@@ -146,19 +240,6 @@ def generate_cover_letter():
                 f"Thank you for considering my application.\n\nSincerely,\n{data['name']}"
             )
             return jsonify({"success": True, "cover_letter": mock_letter}), 200
-
-        # OpenAI API call
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a professional career coach. Write clear, concise, and tailored cover letters."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=800
-        )
-        cover_letter = response.choices[0].message.content
-        return jsonify({"success": True, "cover_letter": cover_letter}), 200
 
     except Exception as e:
         app.logger.error(f"Error generating cover letter: {str(e)}")
@@ -218,8 +299,47 @@ def optimize_resume():
                 "suggested_edits": "Please provide both resume_text and job_description."
             }), 200
 
+        gemini = get_gemini_client()
         client = get_openai_client()
-        if not client:
+        if gemini:
+            prompt = build_ai_prompt(resume_text, job_description)
+            response = gemini.generate_content(prompt)
+            ai_content = response.text
+            try:
+                ai_json = json.loads(ai_content)
+                ai_json['success'] = True
+                return jsonify(ai_json), 200
+            except Exception:
+                return jsonify({
+                    "success": True,
+                    "missing_keywords": [],
+                    "strengths": [],
+                    "suggested_edits": ai_content.strip()
+                }), 200
+        elif client:
+            prompt = build_ai_prompt(resume_text, job_description)
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a resume optimization assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.4,
+                max_tokens=600
+            )
+            ai_content = response.choices[0].message.content
+            try:
+                ai_json = json.loads(ai_content)
+                ai_json['success'] = True
+                return jsonify(ai_json), 200
+            except Exception:
+                return jsonify({
+                    "success": True,
+                    "missing_keywords": [],
+                    "strengths": [],
+                    "suggested_edits": ai_content.strip()
+                }), 200
+        else:
             # Local analysis (mock mode)
             job_keywords = parse_keywords(job_description)
             missing, strengths = analyze_alignment(resume_text, job_keywords)
@@ -237,33 +357,6 @@ def optimize_resume():
                 "missing_keywords": missing,
                 "strengths": strengths,
                 "suggested_edits": suggested_edits
-            }), 200
-
-        # AI-powered analysis
-        prompt = build_ai_prompt(resume_text, job_description)
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a resume optimization assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.4,
-            max_tokens=600
-        )
-        # Try to parse the AI's JSON response
-        import json
-        ai_content = response.choices[0].message.content
-        try:
-            ai_json = json.loads(ai_content)
-            ai_json['success'] = True
-            return jsonify(ai_json), 200
-        except Exception:
-            # Fallback: return AI text as suggested_edits
-            return jsonify({
-                "success": True,
-                "missing_keywords": [],
-                "strengths": [],
-                "suggested_edits": ai_content.strip()
             }), 200
     except Exception as e:
         app.logger.error(f"Error optimizing resume: {str(e)}")
