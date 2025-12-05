@@ -186,12 +186,47 @@ Week 2: Resume generation (basic text) ✅
 
 Week 3: Resume templates ✅
 
-Week 4: Cover letter generation
+Week 4: Cover letter generation ✅
 
-Week 5: Keyword optimization
+Week 5: Keyword optimization ✅
 
 Week 6: PDF export ✅
 
-Week 7: Save & polish features
+Week 7: Save & polish features ✅
 
 Week 8: Finalize & demo
+
+## 💾 Working with Drafts
+
+The application supports saving and loading drafts for both resumes and cover letters. Drafts are stored in your browser's localStorage, so they persist between sessions.
+
+### Saving Drafts
+
+1. Fill in any fields on the Resume or Cover Letter form
+2. Click the **"Save Draft"** button in the top-right corner
+3. A confirmation message will appear when the draft is saved
+
+Drafts automatically capture:
+- All form field values (name, education, experience, skills, etc.)
+- The selected template
+- Any generated resume or cover letter text
+
+### Loading Drafts
+
+1. Click the **"My Drafts"** button to open the drafts dialog
+2. Browse your saved drafts (sorted by most recent)
+3. Click on a draft to load it into the form
+4. The form fields and any generated content will be restored
+
+### Managing Drafts
+
+From the My Drafts dialog, you can:
+- **Rename**: Click the edit icon to change a draft's title
+- **Delete**: Click the trash icon to permanently remove a draft
+- **Load**: Click anywhere on a draft card to load it
+
+### Notes
+
+- Drafts are stored locally in your browser and are not synced across devices
+- Clearing your browser data will delete all saved drafts
+- Each draft type (resume/cover letter) has its own separate list
