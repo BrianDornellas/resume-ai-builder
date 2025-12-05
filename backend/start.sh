@@ -26,7 +26,9 @@ pip install -q -r requirements.txt
 # Load environment variables if .env exists
 if [ -f ".env" ]; then
     echo "🔑 Loading environment variables from .env..."
-    export $(grep -v '^#' .env | xargs)
+    set -a
+    source .env
+    set +a
 fi
 
 # Set default FLASK_DEBUG if not set
