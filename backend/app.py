@@ -18,6 +18,31 @@ from pdf_generator import generate_pdf, PDF_TEMPLATES
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Flutter web app
 
+
+# --- Error Handling Helpers ---
+def json_error(message, status=400):
+    """
+    Returns a standardized JSON error response.
+    Shape: { "success": false, "error": string }
+    Never leaks stack traces to clients.
+    """
+    return jsonify({"success": False, "error": message}), status
+
+
+def get_json_or_error():
+    """
+    Safely parses JSON from request body.
+    Returns (data, None) on success, or (None, error_response) on failure.
+    """
+    try:
+        data = request.get_json(force=True, silent=False)
+        if data is None:
+            return None, json_error("Request body must be valid JSON")
+        return data, None
+    except Exception:
+        return None, json_error("Request body must be valid JSON")
+
+
 # Initialize OpenAI client - will be None if API key is not set
 
 def get_openai_client():
@@ -59,23 +84,22 @@ def export_pdf():
     Returns: application/pdf binary stream
     """
     try:
-        data = request.get_json(silent=True)
+        data, error_response = get_json_or_error()
+        if error_response:
+            return error_response
         
         # Validate required fields
-        if not data:
-            return jsonify({"error": "Request body is required"}), 400
-        
         content = data.get('content')
-        if not content or not content.strip():
-            return jsonify({"error": "Content is required and cannot be empty"}), 400
+        if not content or not isinstance(content, str) or not content.strip():
+            return json_error("Content is required and cannot be empty")
         
         document_type = data.get('document_type', 'resume')
         if document_type not in ('resume', 'cover_letter'):
-            return jsonify({"error": "document_type must be 'resume' or 'cover_letter'"}), 400
+            return json_error("document_type must be 'resume' or 'cover_letter'")
         
         template = data.get('template', 'classic')
         if template not in PDF_TEMPLATES:
-            return jsonify({"error": f"template must be one of: {PDF_TEMPLATES}"}), 400
+            return json_error(f"template must be one of: {PDF_TEMPLATES}")
         
         # Generate PDF
         pdf_bytes = generate_pdf(content, template)
@@ -93,10 +117,10 @@ def export_pdf():
         )
         
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return json_error(str(e))
     except Exception as e:
         app.logger.error(f"Error generating PDF: {str(e)}")
-        return jsonify({"error": "An error occurred while generating the PDF"}), 500
+        return json_error("An error occurred while generating the PDF", 500)
 
 @app.route('/generate-resume', methods=['POST'])
 def generate_resume():
@@ -112,13 +136,15 @@ def generate_resume():
     }
     """
     try:
-        data = request.get_json()
+        data, error_response = get_json_or_error()
+        if error_response:
+            return error_response
         
         # Validate required fields
         required_fields = ['name', 'education', 'experience', 'skills']
         for field in required_fields:
-            if field not in data:
-                return jsonify({"error": f"Missing required field: {field}"}), 400
+            if field not in data or not isinstance(data.get(field), str):
+                return json_error(f"Missing required field: {field}")
         
         # Extract user data
         name = data['name']
@@ -162,10 +188,7 @@ def generate_resume():
         app.logger.error(f"Error generating resume: {str(e)}")
         
         # Return a generic error message to avoid exposing stack traces
-        return jsonify({
-            "success": False,
-            "error": f"An error occurred while generating the resume. Please try again. {str(e)}"
-        }), 500
+        return json_error("An error occurred while generating the resume. Please try again.", 500)
     
     # Helper function to build the cover letter prompt
 def build_cover_letter_prompt(data):
@@ -204,11 +227,14 @@ def generate_cover_letter():
     }
     """
     try:
-        data = request.get_json()
+        data, error_response = get_json_or_error()
+        if error_response:
+            return error_response
+        
         required_fields = ['name', 'company', 'role', 'job_description', 'experience', 'skills']
         for field in required_fields:
-            if field not in data:
-                return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
+            if field not in data or not isinstance(data.get(field), str):
+                return json_error(f"Missing required field: {field}")
 
         gemini = get_gemini_client()
         client = get_openai_client()
@@ -243,7 +269,7 @@ def generate_cover_letter():
 
     except Exception as e:
         app.logger.error(f"Error generating cover letter: {str(e)}")
-        return jsonify({"success": False, "error": "An error occurred while generating the cover letter. Please try again."}), 500
+        return json_error("An error occurred while generating the cover letter. Please try again.", 500)
 
 
 # --- Resume Optimization Helpers ---
@@ -288,10 +314,19 @@ def build_ai_prompt(resume_text, job_description):
 @app.route('/optimize-resume', methods=['POST'])
 def optimize_resume():
     try:
-        data = request.get_json()
+        data, error_response = get_json_or_error()
+        if error_response:
+            return error_response
+        
         resume_text = data.get('resume_text', '')
         job_description = data.get('job_description', '')
-        if not resume_text or not job_description:
+        
+        if not isinstance(resume_text, str):
+            return json_error("resume_text must be a string")
+        if not isinstance(job_description, str):
+            return json_error("job_description must be a string")
+        
+        if not resume_text.strip() or not job_description.strip():
             return jsonify({
                 "success": True,
                 "missing_keywords": [],
@@ -360,12 +395,7 @@ def optimize_resume():
             }), 200
     except Exception as e:
         app.logger.error(f"Error optimizing resume: {str(e)}")
-        return jsonify({
-            "success": True,
-            "missing_keywords": [],
-            "strengths": [],
-            "suggested_edits": "An error occurred, but the request was handled gracefully."
-        }), 200
+        return json_error("An error occurred while optimizing the resume. Please try again.", 500)
 
 
 if __name__ == '__main__':
