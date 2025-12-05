@@ -44,7 +44,10 @@ def get_openai_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or not OpenAI:
         return None
-    return OpenAI(api_key=api_key)
+
+    os.environ["OPENAI_API_KEY"] = api_key
+    return OpenAI()
+
 
 
 def get_gemini_client():
@@ -118,7 +121,14 @@ def export_pdf():
         if template not in PDF_TEMPLATES:
             return json_error(f"template must be one of: {PDF_TEMPLATES}")
 
+        # Generate the PDF bytes from markdown content
         pdf_bytes = generate_pdf(content, template)
+
+        # 🔐 Guard: make sure generate_pdf actually returned bytes
+        if not isinstance(pdf_bytes, (bytes, bytearray)) or not pdf_bytes:
+            app.logger.error("generate_pdf returned empty or invalid data")
+            return json_error("Failed to generate the PDF content.", 500)
+
         filename = "resume.pdf" if document_type == "resume" else "cover_letter.pdf"
 
         return Response(
@@ -131,8 +141,9 @@ def export_pdf():
         )
 
     except Exception as e:
-        app.logger.error(str(e))
+        app.logger.error(f"Error generating PDF: {e}")
         return json_error("An error occurred while generating the PDF", 500)
+
 
 
 # -----------------------------
