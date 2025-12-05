@@ -1,6 +1,15 @@
 import 'dart:convert';
+import 'dart:math';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+
+/// Generates a unique ID with timestamp and random component for draft storage.
+String _generateUniqueId(String type) {
+  final now = DateTime.now();
+  final random = Random();
+  final randomPart = random.nextInt(999999).toString().padLeft(6, '0');
+  return '${now.millisecondsSinceEpoch}_${randomPart}_$type';
+}
 
 /// Represents a saved draft (resume or cover letter).
 class Draft {
@@ -27,7 +36,7 @@ class Draft {
   }) {
     final now = DateTime.now();
     return Draft(
-      id: '${now.millisecondsSinceEpoch}_${type}',
+      id: _generateUniqueId(type),
       type: type,
       title: title,
       createdAt: now,

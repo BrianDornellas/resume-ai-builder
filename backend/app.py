@@ -321,8 +321,10 @@ def optimize_resume():
         resume_text = data.get('resume_text', '')
         job_description = data.get('job_description', '')
         
-        if not isinstance(resume_text, str) or not isinstance(job_description, str):
-            return json_error("resume_text and job_description must be strings")
+        if not isinstance(resume_text, str):
+            return json_error("resume_text must be a string")
+        if not isinstance(job_description, str):
+            return json_error("job_description must be a string")
         
         if not resume_text.strip() or not job_description.strip():
             return jsonify({
