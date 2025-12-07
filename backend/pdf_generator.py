@@ -33,7 +33,9 @@ def generate_pdf(content: str, template: str = "classic") -> bytes:
     if template not in PDF_TEMPLATES:
         raise ValueError(f"Unknown template: {template}. Available: {PDF_TEMPLATES}")
     
-    # Clean up any literal placeholder markers that might be in the content
+    # Clean up any literal placeholder markers that might be in the content from previous processing
+    # Handle both old and new marker formats for backward compatibility
+    content = content.replace('<<<BOLD_START>>>', '**').replace('<<<BOLD_END>>>', '**')
     content = content.replace('__BOLD_START__', '**').replace('__BOLD_END__', '**')
     content = content.replace('BOLD_START', '').replace('BOLD_END', '')
     
@@ -274,13 +276,16 @@ def _escape_xml(text: str) -> str:
 def _convert_bold(text: str) -> str:
     """
     Convert **text** to placeholder markers for bold (to be converted after escaping).
-    Also handles other common Markdown formatting.
+    Uses unique markers that won't conflict with any content.
     """
     # Replace **text** with placeholder markers (non-greedy to handle multiple instances)
     text = re.sub(r'\*\*(.+?)\*\*', r'<<<BOLD_START>>>\1<<<BOLD_END>>>', text)
-    # Also handle __text__ for bold (less common but valid) - use non-greedy match
-    # But be careful not to match our placeholders
-    text = re.sub(r'(?<!<)__(.+?)__(?!>)', r'<<<BOLD_START>>>\1<<<BOLD_END>>>', text)
+    
+    # Also handle __text__ for bold (less common but valid markdown)
+    # Use word boundaries and non-greedy match to be more specific
+    # This won't match our placeholders since they contain <<< and >>>
+    text = re.sub(r'\b__(.+?)__\b', r'<<<BOLD_START>>>\1<<<BOLD_END>>>', text)
+    
     return text
 
 
