@@ -24,6 +24,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
   final _educationController = TextEditingController();
   final _experienceController = TextEditingController();
   final _skillsController = TextEditingController();
+  late final TextEditingController _resumeEditorController;
 
   bool _loading = false;
   String? _resume;
@@ -65,12 +66,19 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
   String? _currentDraftId;
 
   @override
+  void initState() {
+    super.initState();
+    _resumeEditorController = TextEditingController();
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _educationController.dispose();
     _experienceController.dispose();
     _skillsController.dispose();
     _jdController.dispose();
+    _resumeEditorController.dispose();
     super.dispose();
   }
 
@@ -82,7 +90,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       'experience': _experienceController.text,
       'skills': _skillsController.text,
       'template': _selectedTemplate,
-      'generatedResume': _resume,
+      'generatedResume': _resumeEditorController.text,
     };
   }
 
@@ -93,7 +101,8 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     _experienceController.text = content['experience'] ?? '';
     _skillsController.text = content['skills'] ?? '';
     _selectedTemplate = content['template'] ?? 'chronological';
-    _resume = content['generatedResume'];
+    _resume = content['generatedResume'] as String? ?? '';
+    _resumeEditorController.text = _resume ?? '';
   }
 
   Future<void> _saveDraft() async {
@@ -167,6 +176,8 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       if (result['success'] == true) {
         setState(() {
           _resume = result['resume'] as String?;
+          // Sync the editor controller with the generated resume
+          _resumeEditorController.text = _resume ?? '';
         });
       } else {
         setState(() {
@@ -191,7 +202,8 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       _optError = null;
       _optMock = false;
     });
-    if (_resume == null || _resume!.trim().isEmpty || _jdController.text.trim().isEmpty) {
+    final resumeText = _resumeEditorController.text.trim();
+    if (resumeText.isEmpty || _jdController.text.trim().isEmpty) {
       setState(() {
         _optimizing = false;
         _optError = 'Please generate a resume and enter a job description.';
@@ -200,7 +212,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     }
     try {
       final result = await ApiClient().optimizeResume(
-        resumeText: _resume!,
+        resumeText: resumeText,
         jobDescription: _jdController.text.trim(),
       );
       setState(() {
@@ -221,7 +233,23 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
   }
 
   Future<void> _exportPdf() async {
-    if (_resume == null || _resume!.isEmpty) return;
+    // Use edited text from controller, fallback to _resume if controller is empty
+    final content = _resumeEditorController.text.trim().isNotEmpty 
+        ? _resumeEditorController.text 
+        : _resume;
+    
+    if (content == null || content.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No resume content to export. Please generate a resume first.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
     
     setState(() {
       _exporting = true;
@@ -230,7 +258,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     try {
       final pdfBytes = await ApiClient().exportPdf(
         documentType: 'resume',
-        content: _resume!,
+        content: content,
         template: _pdfTemplate,
       );
       
@@ -500,7 +528,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                 // Copy button
                 TextButton.icon(
                   onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: _resume!));
+                    await Clipboard.setData(ClipboardData(text: _resumeEditorController.text));
                     setState(() => _copied = true);
                     Future.delayed(const Duration(seconds: 2), () {
                       if (mounted) setState(() => _copied = false);
@@ -518,18 +546,18 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Resume content
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade200),
+        // Resume editor - Editable multiline text field
+        TextField(
+          controller: _resumeEditorController,
+          minLines: 10,
+          maxLines: null,
+          keyboardType: TextInputType.multiline,
+          decoration: const InputDecoration(
+            labelText: 'Edit Resume (Markdown)',
+            border: OutlineInputBorder(),
+            alignLabelWithHint: true,
           ),
-          child: SelectableText(
-            _resume!,
-            style: const TextStyle(fontFamily: 'monospace', height: 1.5),
-          ),
+          style: const TextStyle(fontFamily: 'monospace', height: 1.5),
         ),
         const SizedBox(height: 16),
 
