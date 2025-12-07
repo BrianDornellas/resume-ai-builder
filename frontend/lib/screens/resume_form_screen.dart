@@ -236,6 +236,14 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
   }
 
   Future<void> _applySuggestions() async {
+    // Validate that we have optimization results first
+    if (_optResult == null || _optResult?['suggested_edits'] == null) {
+      setState(() {
+        _optError = 'Please analyze the resume first before applying suggestions.';
+      });
+      return;
+    }
+    
     setState(() {
       _applyingSuggestions = true;
       _optError = null;
@@ -243,7 +251,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     
     final resumeText = _resumeEditorController.text.trim();
     final jobDescription = _jdController.text.trim();
-    final suggestedEdits = (_optResult?['suggested_edits'] as String?) ?? '';
+    final suggestedEdits = (_optResult!['suggested_edits'] as String?) ?? '';
     final extraDetails = _extraDetailsController.text.trim();
     
     if (resumeText.isEmpty || jobDescription.isEmpty || suggestedEdits.isEmpty) {

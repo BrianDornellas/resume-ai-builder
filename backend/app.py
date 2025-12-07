@@ -361,22 +361,39 @@ def improve_resume():
         client = get_openai_client()
         
         if gemini:
-            response = gemini.generate_content(prompt)
-            improved_resume = response.text
+            try:
+                response = gemini.generate_content(prompt)
+                improved_resume = response.text
+            except Exception as e:
+                app.logger.error(f"Gemini API error: {str(e)}")
+                return json_error("AI service temporarily unavailable. Please try again later.", 503)
         elif client:
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a professional resume writer who helps optimize resumes for specific job opportunities."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                max_tokens=1500
-            )
-            improved_resume = response.choices[0].message.content
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a professional resume writer who helps optimize resumes for specific job opportunities."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=1500
+                )
+                improved_resume = response.choices[0].message.content
+            except Exception as e:
+                app.logger.error(f"OpenAI API error: {str(e)}")
+                return json_error("AI service temporarily unavailable. Please try again later.", 503)
         else:
-            # Mock mode - just append a note
-            improved_resume = resume_text + "\n\n[NOTE: AI improvement mock - please edit manually.]"
+            # Mock mode - create a simple improved version
+            # Extract first few suggestions and add them as comments
+            suggestions_list = suggested_edits.split('\n')[:3]
+            suggestions_text = '\n'.join([f"<!-- TODO: {s.strip()} -->" for s in suggestions_list if s.strip()])
+            improved_resume = (
+                f"{resume_text}\n\n"
+                f"<!-- Mock AI Improvement Mode -->\n"
+                f"<!-- Suggested improvements to consider: -->\n"
+                f"{suggestions_text}\n"
+                f"<!-- Additional context provided: {extra_details if extra_details else 'None'} -->"
+            )
         
         return jsonify({
             "success": True,

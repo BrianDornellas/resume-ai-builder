@@ -119,6 +119,17 @@ class ApiClient {
         'extra_details': extraDetails,
       }),
     );
+    
+    // Handle non-200 responses
+    if (response.statusCode != 200) {
+      try {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return {'success': false, 'error': data['error'] ?? 'Server error occurred'};
+      } catch (_) {
+        return {'success': false, 'error': 'Server error: ${response.statusCode}'};
+      }
+    }
+    
     return _decodeResponse(response);
   }
 
