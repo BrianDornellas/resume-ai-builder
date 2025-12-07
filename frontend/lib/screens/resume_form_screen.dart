@@ -101,8 +101,8 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     _experienceController.text = content['experience'] ?? '';
     _skillsController.text = content['skills'] ?? '';
     _selectedTemplate = content['template'] ?? 'chronological';
-    _resume = content['generatedResume'] as String? ?? '';
-    _resumeEditorController.text = _resume;
+    _resume = (content['generatedResume'] ?? '') as String;
+    _resumeEditorController.text = _resume ?? '';
   }
 
   Future<void> _saveDraft() async {
