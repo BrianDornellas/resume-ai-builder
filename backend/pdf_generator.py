@@ -159,10 +159,11 @@ def _parse_content(
     
     Handles:
     - Lines starting with '# ' as titles
-    - Lines starting with '## ' as section headers
+    - Lines starting with '## ' or '### ' as section headers
     - Lines starting with '- ' or '* ' as bullet points
     - '---' as horizontal rules
     - Other lines as body text
+    - Cleans up Markdown artifacts
     """
     story = []
     lines = content.strip().split('\n')
@@ -176,8 +177,12 @@ def _parse_content(
             story.append(Spacer(1, 6))
             continue
         
+        # Skip HTML comments
+        if line.strip().startswith('<!--') or line.strip().endswith('-->'):
+            continue
+        
         # Horizontal rule
-        if line.strip() == '---':
+        if line.strip() == '---' or line.strip() == '___' or line.strip() == '***':
             if use_hr:
                 story.append(Spacer(1, 4))
                 story.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
@@ -188,7 +193,7 @@ def _parse_content(
         
         # Title (H1)
         if line.startswith('# '):
-            text = _escape_xml(_strip_emoji(line[2:].strip()))
+            text = _clean_markdown(_strip_emoji(line[2:].strip()))
             if first_title:
                 story.append(Paragraph(text, title_style))
                 first_title = False
@@ -196,26 +201,54 @@ def _parse_content(
                 story.append(Paragraph(text, section_style))
             continue
         
-        # Section header (H2)
-        if line.startswith('## '):
-            text = _escape_xml(_strip_emoji(line[3:].strip()))
+        # Section header (H2 or H3)
+        if line.startswith('## ') or line.startswith('### '):
+            header_text = line.lstrip('#').strip()
+            text = _clean_markdown(_strip_emoji(header_text))
             story.append(Paragraph(text, section_style))
             continue
         
-        # Bullet point
-        if line.startswith('- ') or line.startswith('* '):
-            text = _escape_xml(line[2:].strip())
+        # Bullet point (handle various bullet styles)
+        if line.lstrip().startswith('- ') or line.lstrip().startswith('* ') or line.lstrip().startswith('• '):
+            # Remove leading whitespace and bullet marker
+            text_content = line.lstrip()
+            for prefix in ['- ', '* ', '• ']:
+                if text_content.startswith(prefix):
+                    text_content = text_content[len(prefix):]
+                    break
+            text = _clean_markdown(text_content.strip())
             story.append(Paragraph(f"• {text}", bullet_style))
             continue
         
-        # Bold text handling for **text**
-        text = _convert_bold(line)
-        text = _escape_xml(text)
-        # Re-add bold tags after escaping
-        text = text.replace('__BOLD_START__', '<b>').replace('__BOLD_END__', '</b>')
+        # Regular body text - convert bold, clean markdown
+        text = _clean_markdown(line)
         story.append(Paragraph(text, body_style))
     
     return story
+
+
+def _clean_markdown(text: str) -> str:
+    """
+    Clean markdown artifacts and prepare text for PDF rendering.
+    Handles bold conversion and XML escaping properly.
+    """
+    # Normalize Unicode characters first
+    text = _normalize_unicode(text)
+    
+    # Handle bold conversion (before escaping)
+    text = _convert_bold(text)
+    
+    # Escape XML characters
+    text = _escape_xml(text)
+    
+    # Re-add bold tags after escaping
+    text = text.replace('__BOLD_START__', '<b>').replace('__BOLD_END__', '</b>')
+    
+    # Clean up common Markdown artifacts that might have been missed
+    # Remove stray asterisks that aren't part of bold
+    text = re.sub(r'(?<!\*)\*(?!\*)', '', text)
+    
+    return text
 
 
 def _strip_emoji(text: str) -> str:
@@ -235,6 +268,34 @@ def _escape_xml(text: str) -> str:
 
 
 def _convert_bold(text: str) -> str:
-    """Convert **text** to placeholder markers for bold (to be converted after escaping)."""
+    """
+    Convert **text** to placeholder markers for bold (to be converted after escaping).
+    Also handles other common Markdown formatting.
+    """
     # Replace **text** with placeholder markers
-    return re.sub(r'\*\*([^*]+)\*\*', r'__BOLD_START__\1__BOLD_END__', text)
+    text = re.sub(r'\*\*([^*]+)\*\*', r'__BOLD_START__\1__BOLD_END__', text)
+    # Also handle __text__ for bold (less common but valid)
+    text = re.sub(r'__([^_]+)__', r'__BOLD_START__\1__BOLD_END__', text)
+    return text
+
+
+def _normalize_unicode(text: str) -> str:
+    """
+    Normalize Unicode characters to their closest ASCII equivalents for better PDF compatibility.
+    """
+    # Replace common Unicode characters with ASCII equivalents
+    replacements = {
+        '\u2013': '-',  # en-dash
+        '\u2014': '--', # em-dash
+        '\u2018': "'",  # left single quote
+        '\u2019': "'",  # right single quote
+        '\u201c': '"',  # left double quote
+        '\u201d': '"',  # right double quote
+        '\u2022': '•',  # bullet (keep this one)
+        '\u2026': '...', # ellipsis
+    }
+    
+    for unicode_char, ascii_char in replacements.items():
+        text = text.replace(unicode_char, ascii_char)
+    
+    return text

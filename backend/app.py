@@ -293,17 +293,82 @@ def analyze_alignment(resume_text, job_keywords):
     strengths = [kw for kw in job_keywords if kw in resume_lc]
     return missing, strengths
 
+def _extract_json_from_ai_response(content):
+    """
+    Extract JSON object from AI response, handling cases where it's wrapped in markdown code fences.
+    Returns parsed JSON dict or None if parsing fails.
+    """
+    content = content.strip()
+    
+    # Remove markdown code fences if present
+    if content.startswith('```'):
+        # Find the first newline after ```
+        start = content.find('\n')
+        if start != -1:
+            # Find the closing ```
+            end = content.rfind('```')
+            if end != -1:
+                content = content[start+1:end].strip()
+    
+    # Try to parse JSON
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        # Try to find JSON object within the text
+        try:
+            start = content.find('{')
+            end = content.rfind('}')
+            if start != -1 and end != -1 and end > start:
+                return json.loads(content[start:end+1])
+        except json.JSONDecodeError:
+            pass
+    
+    return None
+
+def _format_suggestions(text):
+    """
+    Format suggestions text to ensure it's properly bulleted.
+    Converts raw text into bullet-point format if needed.
+    """
+    if not text or not isinstance(text, str):
+        return ""
+    
+    text = text.strip()
+    
+    # If already properly formatted with bullets, return as-is
+    lines = text.split('\n')
+    if all(line.strip().startswith('-') or line.strip().startswith('•') or not line.strip() for line in lines):
+        return text
+    
+    # Convert numbered lists or plain text to bullets
+    formatted_lines = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Remove common prefixes (numbers, existing bullets, etc.)
+        line = re.sub(r'^\d+[\.\)]\s*', '', line)  # Remove "1. " or "1) "
+        line = re.sub(r'^[•\-\*]\s*', '', line)     # Remove existing bullets
+        
+        if line:
+            formatted_lines.append(f"- {line}")
+    
+    return '\n'.join(formatted_lines) if formatted_lines else text
+
 def build_ai_prompt(resume_text, job_description):
     """Builds a prompt for the AI to analyze resume vs job description and return JSON schema."""
     return (
         "You are a resume optimization assistant. "
-        "Given the following resume and job description, analyze them and respond in this JSON format: "
-        '{"success": true, "missing_keywords": ["string"], "strengths": ["string"], "suggested_edits": "string"}'
-        f"Resume:\n{resume_text}\n"
-        f"Job Description:\n{job_description}\n"
-        "- missing_keywords: List keywords/skills from the job description not present in the resume.\n"
-        "- strengths: List areas where the resume aligns well with the job description.\n"
-        "- suggested_edits: Give 3-6 concise bullet suggestions to improve the resume for this job. Do not rewrite the resume."
+        "Given the following resume and job description, analyze them and respond ONLY with valid JSON in this exact format:\n"
+        '{"missing_keywords": ["keyword1", "keyword2"], "strengths": ["strength1", "strength2"], "suggested_edits": "- suggestion1\\n- suggestion2\\n- suggestion3"}\n\n'
+        f"Resume:\n{resume_text}\n\n"
+        f"Job Description:\n{job_description}\n\n"
+        "Requirements:\n"
+        "- missing_keywords: Array of specific keywords/skills from job description NOT in the resume\n"
+        "- strengths: Array of areas where resume aligns well with job description\n"
+        "- suggested_edits: String with 3-6 bullet points (each line must start with '- '). Give actionable suggestions to improve the resume.\n\n"
+        "Return ONLY the JSON object, no other text or explanation."
     )
 
 # Example curl:
@@ -433,40 +498,52 @@ def optimize_resume():
         if gemini:
             prompt = build_ai_prompt(resume_text, job_description)
             response = gemini.generate_content(prompt)
-            ai_content = response.text
-            try:
-                ai_json = json.loads(ai_content)
-                ai_json['success'] = True
-                return jsonify(ai_json), 200
-            except Exception:
+            ai_content = response.text.strip()
+            # Try to extract JSON from the response
+            ai_json = _extract_json_from_ai_response(ai_content)
+            if ai_json:
+                return jsonify({
+                    "success": True,
+                    "missing_keywords": ai_json.get('missing_keywords', []),
+                    "strengths": ai_json.get('strengths', []),
+                    "suggested_edits": _format_suggestions(ai_json.get('suggested_edits', ''))
+                }), 200
+            else:
+                # Fallback: parse the raw text into bullets
                 return jsonify({
                     "success": True,
                     "missing_keywords": [],
                     "strengths": [],
-                    "suggested_edits": ai_content.strip()
+                    "suggested_edits": _format_suggestions(ai_content)
                 }), 200
         elif client:
             prompt = build_ai_prompt(resume_text, job_description)
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a resume optimization assistant."},
+                    {"role": "system", "content": "You are a resume optimization assistant. Always respond with valid JSON."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.4,
                 max_tokens=600
             )
-            ai_content = response.choices[0].message.content
-            try:
-                ai_json = json.loads(ai_content)
-                ai_json['success'] = True
-                return jsonify(ai_json), 200
-            except Exception:
+            ai_content = response.choices[0].message.content.strip()
+            # Try to extract JSON from the response
+            ai_json = _extract_json_from_ai_response(ai_content)
+            if ai_json:
+                return jsonify({
+                    "success": True,
+                    "missing_keywords": ai_json.get('missing_keywords', []),
+                    "strengths": ai_json.get('strengths', []),
+                    "suggested_edits": _format_suggestions(ai_json.get('suggested_edits', ''))
+                }), 200
+            else:
+                # Fallback: parse the raw text into bullets
                 return jsonify({
                     "success": True,
                     "missing_keywords": [],
                     "strengths": [],
-                    "suggested_edits": ai_content.strip()
+                    "suggested_edits": _format_suggestions(ai_content)
                 }), 200
         else:
             # Local analysis (mock mode)
