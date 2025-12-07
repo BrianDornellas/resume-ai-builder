@@ -102,6 +102,26 @@ class ApiClient {
     }
   }
 
+  Future<Map<String, dynamic>> improveResume({
+    required String resumeText,
+    required String jobDescription,
+    required String suggestedEdits,
+    String extraDetails = '',
+  }) async {
+    final url = Uri.parse('$_baseUrl/improve-resume');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'resume_text': resumeText,
+        'job_description': jobDescription,
+        'suggested_edits': suggestedEdits,
+        'extra_details': extraDetails,
+      }),
+    );
+    return _decodeResponse(response);
+  }
+
   Map<String, dynamic> _decodeResponse(http.Response response) {
     try {
       return jsonDecode(response.body) as Map<String, dynamic>;

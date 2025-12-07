@@ -48,10 +48,12 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
 
   // Optimization panel state
   final _jdController = TextEditingController();
+  final _extraDetailsController = TextEditingController();
   bool _optimizing = false;
   Map<String, dynamic>? _optResult;
   String? _optError;
   bool _optMock = false;
+  bool _applyingSuggestions = false;
 
   // PDF export state
   bool _exporting = false;
@@ -78,6 +80,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     _experienceController.dispose();
     _skillsController.dispose();
     _jdController.dispose();
+    _extraDetailsController.dispose();
     _resumeEditorController.dispose();
     super.dispose();
   }
@@ -230,6 +233,66 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
         _optimizing = false;
       });
     }
+  }
+
+  Future<void> _applySuggestions() async {
+    setState(() {
+      _applyingSuggestions = true;
+      _optError = null;
+    });
+    
+    final resumeText = _resumeEditorController.text.trim();
+    final jobDescription = _jdController.text.trim();
+    final suggestedEdits = (_optResult?['suggested_edits'] as String?) ?? '';
+    final extraDetails = _extraDetailsController.text.trim();
+    
+    if (resumeText.isEmpty || jobDescription.isEmpty || suggestedEdits.isEmpty) {
+      setState(() {
+        _applyingSuggestions = false;
+        _optError = 'Please generate a resume and analyze it first before applying suggestions.';
+      });
+      return;
+    }
+    
+    try {
+      final result = await ApiClient().improveResume(
+        resumeText: resumeText,
+        jobDescription: jobDescription,
+        suggestedEdits: suggestedEdits,
+        extraDetails: extraDetails,
+      );
+      
+      if (result['success'] == true && result['improved_resume'] != null) {
+        setState(() {
+          // Update the resume editor with the improved version
+          _resumeEditorController.text = result['improved_resume'] as String;
+          _resume = result['improved_resume'] as String;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Resume improved successfully! Review the changes in the editor.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          _optError = result['error']?.toString() ?? 'Failed to improve resume.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _optError = 'Network error: Unable to improve resume. Please try again.';
+      });
+    } finally {
+      setState(() {
+        _applyingSuggestions = false;
+      });
+    }
+  }
   }
 
   Future<void> _exportPdf() async {
@@ -760,6 +823,51 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                               .toList(),
                         ],
                       ),
+                    // Extra details and Apply button
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Optional: Provide Additional Context',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Add any extra details (e.g., relevant coursework, projects, certifications) that the AI can use when improving your resume.',
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _extraDetailsController,
+                      minLines: 2,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'Extra Details (Optional)',
+                        hintText: 'e.g., Completed coursework in Machine Learning, built a portfolio website...',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 44,
+                      child: ElevatedButton.icon(
+                        onPressed: _applyingSuggestions ? null : _applySuggestions,
+                        icon: _applyingSuggestions
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.auto_fix_high, size: 20),
+                        label: Text(_applyingSuggestions ? 'Applying...' : 'Apply Suggestions with AI'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
             ],
