@@ -102,7 +102,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     _skillsController.text = content['skills'] ?? '';
     _selectedTemplate = content['template'] ?? 'chronological';
     _resume = content['generatedResume'] as String? ?? '';
-    _resumeEditorController.text = _resume ?? '';
+    _resumeEditorController.text = _resume;
   }
 
   Future<void> _saveDraft() async {
@@ -234,9 +234,8 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
 
   Future<void> _exportPdf() async {
     // Use edited text from controller, fallback to _resume if controller is empty
-    final content = _resumeEditorController.text.trim().isNotEmpty 
-        ? _resumeEditorController.text 
-        : _resume;
+    final editedText = _resumeEditorController.text.trim();
+    final content = editedText.isNotEmpty ? editedText : _resume;
     
     if (content == null || content.isEmpty) {
       if (mounted) {
