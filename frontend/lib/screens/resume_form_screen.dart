@@ -301,7 +301,6 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       });
     }
   }
-  }
 
   Future<void> _exportPdf() async {
     // Use edited text from controller, fallback to _resume if controller is empty
