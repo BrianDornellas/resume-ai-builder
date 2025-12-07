@@ -272,10 +272,10 @@ def _convert_bold(text: str) -> str:
     Convert **text** to placeholder markers for bold (to be converted after escaping).
     Also handles other common Markdown formatting.
     """
-    # Replace **text** with placeholder markers
-    text = re.sub(r'\*\*([^*]+)\*\*', r'__BOLD_START__\1__BOLD_END__', text)
-    # Also handle __text__ for bold (less common but valid)
-    text = re.sub(r'__([^_]+)__', r'__BOLD_START__\1__BOLD_END__', text)
+    # Replace **text** with placeholder markers (non-greedy to handle multiple instances)
+    text = re.sub(r'\*\*(.+?)\*\*', r'__BOLD_START__\1__BOLD_END__', text)
+    # Also handle __text__ for bold (less common but valid) - use non-greedy match
+    text = re.sub(r'__((?:(?!__).)+)__', r'__BOLD_START__\1__BOLD_END__', text)
     return text
 
 

@@ -343,16 +343,16 @@ def _format_suggestions(text):
     # Convert numbered lists or plain text to bullets
     formatted_lines = []
     for line in lines:
-        line = line.strip()
-        if not line:
+        stripped = line.strip()
+        if not stripped:
             continue
         
         # Remove common prefixes (numbers, existing bullets, etc.)
-        line = re.sub(r'^\d+[\.\)]\s*', '', line)  # Remove "1. " or "1) "
-        line = re.sub(r'^[•\-\*]\s*', '', line)     # Remove existing bullets
+        stripped = re.sub(r'^\d+[\.\)]\s*', '', stripped)  # Remove "1. " or "1) "
+        stripped = re.sub(r'^[•\-\*]\s*', '', stripped)     # Remove existing bullets
         
-        if line:
-            formatted_lines.append(f"- {line}")
+        if stripped:
+            formatted_lines.append(f"- {stripped}")
     
     return '\n'.join(formatted_lines) if formatted_lines else text
 
