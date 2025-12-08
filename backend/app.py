@@ -197,7 +197,7 @@ def build_cover_letter_prompt(data):
     data: dict with keys 'name', 'company', 'role', 'job_description', 'experience', 'skills'
     """
     return (
-        f"Write a professional cover letter for the following job application.\n"
+        f"Write a professional cover letter for the following job application. Do not include emojis in the cover letter.\n"
         f"Applicant Name: {data.get('name', '')}\n"
         f"Company: {data.get('company', '')}\n"
         f"Role: {data.get('role', '')}\n"

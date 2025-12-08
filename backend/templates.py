@@ -35,19 +35,19 @@ def _format_chronological_mock(name, education, experience, skills):
 
 ---
 
-## 📚 Education
+## Education
 
 {education}
 
 ---
 
-## 💼 Professional Experience
+## Professional Experience
 
 {experience}
 
 ---
 
-## 🛠 Technical Skills
+## Technical Skills
 
 {skills}
 
@@ -67,19 +67,19 @@ def _format_functional_mock(name, education, experience, skills):
 
 ---
 
-## 🛠 Core Competencies & Skills
+## Core Competencies & Skills
 
 {skills}
 
 ---
 
-## 💼 Relevant Experience
+## Relevant Experience
 
 {experience}
 
 ---
 
-## 📚 Education & Credentials
+## Education & Credentials
 
 {education}
 
@@ -92,7 +92,7 @@ def _format_functional_mock(name, education, experience, skills):
 
 def create_ai_prompt(name, education, experience, skills, template='chronological'):
     """
-    Create an AI prompt based on the selected template.
+    Create an AI prompt based on the selected template. Do not include emojis in the output.
     
     Args:
         name: Candidate's full name
@@ -128,7 +128,7 @@ def _create_chronological_prompt(name, education, experience, skills):
    - Professional Experience (reverse chronological order)
    - Education
    - Technical Skills
-3. Use emojis sparingly for section headers
+3. Do not include emojis in the output.
 4. Make it ATS-friendly and professional
 5. Include concrete achievements and metrics where applicable
 6. Keep the total length reasonable for a resume
@@ -156,7 +156,7 @@ def _create_functional_prompt(name, education, experience, skills):
    - Relevant Experience (organized by skill areas, not chronologically)
    - Education & Credentials
 3. Emphasize transferable skills and competencies
-4. Use emojis sparingly for section headers
+4. Do not include emojis in the output.
 5. Make it ATS-friendly and professional
 6. Group experiences by skill/competency area rather than by date
 7. Keep the total length reasonable for a resume
