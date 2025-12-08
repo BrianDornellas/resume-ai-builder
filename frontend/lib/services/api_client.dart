@@ -102,6 +102,37 @@ class ApiClient {
     }
   }
 
+  Future<Map<String, dynamic>> improveResume({
+    required String resumeText,
+    required String jobDescription,
+    required String suggestedEdits,
+    String extraDetails = '',
+  }) async {
+    final url = Uri.parse('$_baseUrl/improve-resume');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'resume_text': resumeText,
+        'job_description': jobDescription,
+        'suggested_edits': suggestedEdits,
+        'extra_details': extraDetails,
+      }),
+    );
+    
+    // Handle non-200 responses
+    if (response.statusCode != 200) {
+      try {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return {'success': false, 'error': data['error'] ?? 'Server error occurred'};
+      } catch (_) {
+        return {'success': false, 'error': 'Server error: ${response.statusCode}'};
+      }
+    }
+    
+    return _decodeResponse(response);
+  }
+
   Map<String, dynamic> _decodeResponse(http.Response response) {
     try {
       return jsonDecode(response.body) as Map<String, dynamic>;
