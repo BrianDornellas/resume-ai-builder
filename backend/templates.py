@@ -35,19 +35,19 @@ def _format_chronological_mock(name, education, experience, skills):
 
 ---
 
-## Education
+## 📚 Education
 
 {education}
 
 ---
 
-## Professional Experience
+## 💼 Professional Experience
 
 {experience}
 
 ---
 
-## Technical Skills
+## 🛠 Technical Skills
 
 {skills}
 
@@ -67,19 +67,19 @@ def _format_functional_mock(name, education, experience, skills):
 
 ---
 
-## Core Competencies & Skills
+## 🛠 Core Competencies & Skills
 
 {skills}
 
 ---
 
-## Relevant Experience
+## 💼 Relevant Experience
 
 {experience}
 
 ---
 
-## Education & Credentials
+## 📚 Education & Credentials
 
 {education}
 
@@ -92,7 +92,7 @@ def _format_functional_mock(name, education, experience, skills):
 
 def create_ai_prompt(name, education, experience, skills, template='chronological'):
     """
-    Create an AI prompt based on the selected template. Do not include emojis in the output.
+    Create an AI prompt based on the selected template.
     
     Args:
         name: Candidate's full name
@@ -128,7 +128,7 @@ def _create_chronological_prompt(name, education, experience, skills):
    - Professional Experience (reverse chronological order)
    - Education
    - Technical Skills
-3. Do not include emojis in the output.
+3. Use emojis sparingly for section headers
 4. Make it ATS-friendly and professional
 5. Include concrete achievements and metrics where applicable
 6. Keep the total length reasonable for a resume
@@ -153,27 +153,11 @@ def _create_functional_prompt(name, education, experience, skills):
         - Use bullet points for duties, achievements, and skills.
         2. The sections MUST appear in this order, and each section name should be exactly:
 
-<<<<<<< HEAD
         # {name}
         ## Professional Summary
         ## Key Skills
         ## Professional Experience
         ## Education
-=======
-**Requirements:**
-1. Use Markdown formatting (headers, bold, lists, etc.)
-2. Follow functional format with sections in this order:
-   - Name (as H1 header)
-   - Professional Summary (brief, 2-3 sentences)
-   - Core Competencies & Skills (grouped by category)
-   - Relevant Experience (organized by skill areas, not chronologically)
-   - Education & Credentials
-3. Emphasize transferable skills and competencies
-4. Do not include emojis in the output.
-5. Make it ATS-friendly and professional
-6. Group experiences by skill/competency area rather than by date
-7. Keep the total length reasonable for a resume
->>>>>>> 22a27ef8ed00107ca62be6acd41d0f0aba76e2e5
 
         3. Professional Summary:
         - 2–3 concise sentences summarizing strengths, teaching/communication ability, and overall value.

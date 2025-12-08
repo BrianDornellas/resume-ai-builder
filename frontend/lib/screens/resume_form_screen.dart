@@ -25,7 +25,6 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
   final _educationController = TextEditingController();
   final _experienceController = TextEditingController();
   final _skillsController = TextEditingController();
-  late final TextEditingController _resumeEditorController;
 
   bool _loading = false;
   String? _resume;
@@ -49,12 +48,10 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
 
   // Optimization panel state
   final _jdController = TextEditingController();
-  final _extraDetailsController = TextEditingController();
   bool _optimizing = false;
   Map<String, dynamic>? _optResult;
   String? _optError;
   bool _optMock = false;
-  bool _applyingSuggestions = false;
 
   // PDF export state
   bool _exporting = false;
@@ -69,20 +66,12 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
   String? _currentDraftId;
 
   @override
-  void initState() {
-    super.initState();
-    _resumeEditorController = TextEditingController();
-  }
-
-  @override
   void dispose() {
     _nameController.dispose();
     _educationController.dispose();
     _experienceController.dispose();
     _skillsController.dispose();
     _jdController.dispose();
-    _extraDetailsController.dispose();
-    _resumeEditorController.dispose();
     super.dispose();
   }
 
@@ -94,7 +83,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       'experience': _experienceController.text,
       'skills': _skillsController.text,
       'template': _selectedTemplate,
-      'generatedResume': _resumeEditorController.text,
+      'generatedResume': _resume,
     };
   }
 
@@ -105,8 +94,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     _experienceController.text = content['experience'] ?? '';
     _skillsController.text = content['skills'] ?? '';
     _selectedTemplate = content['template'] ?? 'chronological';
-    _resume = (content['generatedResume'] ?? '') as String;
-    _resumeEditorController.text = _resume ?? '';
+    _resume = content['generatedResume'];
   }
 
   Future<void> _saveDraft() async {
@@ -180,8 +168,6 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       if (result['success'] == true) {
         setState(() {
           _resume = result['resume'] as String?;
-          // Sync the editor controller with the generated resume
-          _resumeEditorController.text = _resume ?? '';
         });
       } else {
         setState(() {
@@ -206,8 +192,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
       _optError = null;
       _optMock = false;
     });
-    final resumeText = _resumeEditorController.text.trim();
-    if (resumeText.isEmpty || _jdController.text.trim().isEmpty) {
+    if (_resume == null || _resume!.trim().isEmpty || _jdController.text.trim().isEmpty) {
       setState(() {
         _optimizing = false;
         _optError = 'Please generate a resume and enter a job description.';
@@ -216,7 +201,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     }
     try {
       final result = await ApiClient().optimizeResume(
-        resumeText: resumeText,
+        resumeText: _resume!,
         jobDescription: _jdController.text.trim(),
       );
       final edits = result['suggested_edits'];
@@ -249,90 +234,8 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     }
   }
 
-  Future<void> _applySuggestions() async {
-    // Validate that we have optimization results first
-    if (_optResult == null || _optResult?['suggested_edits'] == null) {
-      setState(() {
-        _optError = 'Please analyze the resume first before applying suggestions.';
-      });
-      return;
-    }
-    
-    setState(() {
-      _applyingSuggestions = true;
-      _optError = null;
-    });
-    
-    final resumeText = _resumeEditorController.text.trim();
-    final jobDescription = _jdController.text.trim();
-    final suggestedEdits = (_optResult!['suggested_edits'] as String?) ?? '';
-    final extraDetails = _extraDetailsController.text.trim();
-    
-    if (resumeText.isEmpty || jobDescription.isEmpty || suggestedEdits.isEmpty) {
-      setState(() {
-        _applyingSuggestions = false;
-        _optError = 'Please generate a resume and analyze it first before applying suggestions.';
-      });
-      return;
-    }
-    
-    try {
-      final result = await ApiClient().improveResume(
-        resumeText: resumeText,
-        jobDescription: jobDescription,
-        suggestedEdits: suggestedEdits,
-        extraDetails: extraDetails,
-      );
-      
-      if (result['success'] == true && result['improved_resume'] != null) {
-        setState(() {
-          // Update the resume editor with the improved version
-          _resumeEditorController.text = result['improved_resume'] as String;
-          _resume = result['improved_resume'] as String;
-        });
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Resume improved successfully! Review the changes in the editor.'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } else {
-        setState(() {
-          _optError = result['error']?.toString() ?? 'Failed to improve resume.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _optError = 'Network error: Unable to improve resume. Please try again.';
-      });
-    } finally {
-      setState(() {
-        _applyingSuggestions = false;
-      });
-    }
-  }
-
   Future<void> _exportPdf() async {
-    // Use edited text from controller, fallback to _resume if controller is empty
-    final editedText = _resumeEditorController.text.trim();
-    final content = editedText.isNotEmpty ? editedText : _resume;
-    
-    if (content == null || content.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No resume content to export. Please generate a resume first.'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-      return;
-    }
+    if (_resume == null || _resume!.isEmpty) return;
     
     setState(() {
       _exporting = true;
@@ -341,7 +244,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
     try {
       final pdfBytes = await ApiClient().exportPdf(
         documentType: 'resume',
-        content: content,
+        content: _resume!,
         template: _pdfTemplate,
       );
       
@@ -611,7 +514,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                 // Copy button
                 TextButton.icon(
                   onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: _resumeEditorController.text));
+                    await Clipboard.setData(ClipboardData(text: _resume!));
                     setState(() => _copied = true);
                     Future.delayed(const Duration(seconds: 2), () {
                       if (mounted) setState(() => _copied = false);
@@ -629,7 +532,6 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
         ),
         const SizedBox(height: 12),
 
-<<<<<<< HEAD
         // Resume content
         Container(
           padding: const EdgeInsets.all(16),
@@ -643,20 +545,7 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
               data: _resume!,
               selectable: true,
             ),
-=======
-        // Resume editor - Editable multiline text field
-        TextField(
-          controller: _resumeEditorController,
-          minLines: 10,
-          maxLines: null,
-          keyboardType: TextInputType.multiline,
-          decoration: const InputDecoration(
-            labelText: 'Edit Resume (Markdown)',
-            border: OutlineInputBorder(),
-            alignLabelWithHint: true,
->>>>>>> 22a27ef8ed00107ca62be6acd41d0f0aba76e2e5
           ),
-          style: const TextStyle(fontFamily: 'monospace', height: 1.5),
         ),
         const SizedBox(height: 16),
 
@@ -858,51 +747,6 @@ class _ResumeFormScreenState extends State<ResumeFormScreen> {
                               .toList(),
                         ],
                       ),
-                    // Extra details and Apply button
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Optional: Provide Additional Context',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Add any extra details (e.g., relevant coursework, projects, certifications) that the AI can use when improving your resume.',
-                      style: TextStyle(color: Colors.black54, fontSize: 12),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _extraDetailsController,
-                      minLines: 2,
-                      maxLines: 5,
-                      decoration: const InputDecoration(
-                        labelText: 'Extra Details (Optional)',
-                        hintText: 'e.g., Completed coursework in Machine Learning, built a portfolio website...',
-                        border: OutlineInputBorder(),
-                        filled: true,
-                        fillColor: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 44,
-                      child: ElevatedButton.icon(
-                        onPressed: _applyingSuggestions ? null : _applySuggestions,
-                        icon: _applyingSuggestions
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.auto_fix_high, size: 20),
-                        label: Text(_applyingSuggestions ? 'Applying...' : 'Apply Suggestions with AI'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
             ],

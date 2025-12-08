@@ -41,9 +41,6 @@ cp .env.example .env
 #   GEMINI_API_KEY=your_key_here   (for Google Gemini)
 #   FLASK_DEBUG=True               (for development)
 
-# To set your Gemini API key in your terminal (before running the backend):
-export GEMINI_API_KEY=your-gemini-api-key-here
-
 # 5. Run the server
 python app.py
 # Server runs at http://localhost:5000
