@@ -1,6 +1,23 @@
+
 # AI-Powered Resume & Cover Letter Builder
 
-An intelligent web application that helps users create professional, tailored resumes and cover letters using AI. The app takes user input (experience, education, skills) along with job descriptions and produces polished, export-ready documents. It features resume keyword optimization, multiple template styles, PDF export capabilities, and draft saving—all accessible through a modern Flutter web interface backed by a Flask API.
+An intelligent web application for creating professional, tailored resumes and cover letters using AI. Built with Flutter Web and Flask, it supports real-time editing, AI-powered optimization, PDF export, and draft management.
+
+---
+
+## 🚀 Features
+
+- **Editable Resume Area:** Edit generated resumes directly in the browser before exporting or optimizing.
+- **Markdown Rendering:** Resumes are rendered with Markdown for rich formatting and easy editing.
+- **AI-Powered Generation:** Supports both OpenAI GPT-3.5 and Google Gemini for resume and cover letter creation.
+- **Keyword Optimization:** Analyze your resume against job descriptions for missing keywords and strengths.
+- **Strict JSON Output:** Gemini integration enforces clean, valid JSON responses for reliable frontend parsing.
+- **Multiple PDF Templates:** Export resumes and cover letters as PDF using Classic or Modern templates.
+- **Draft Saving & Loading:** Save, load, rename, and delete drafts using browser localStorage.
+- **Mock Mode:** Use deterministic, template-based output for development and demos without API keys.
+- **Customizable Frontend Port:** Run the Flutter web app on any port (e.g., 6969) for local development.
+
+---
 
 ## 🛠 Tech Stack
 
@@ -41,7 +58,7 @@ cp .env.example .env
 #   GEMINI_API_KEY=your_key_here   (for Google Gemini)
 #   FLASK_DEBUG=True               (for development)
 
-# To set your Gemini API key in your terminal (before running the backend):
+# Or export your Gemini API key in your terminal (before running the backend):
 export GEMINI_API_KEY=your-gemini-api-key-here
 
 # 5. Run the server
@@ -63,7 +80,12 @@ flutter pub get
 
 # 4. Run the web app
 flutter run -d chrome
+or
+flutter run -d chrome --web-hostname localhost --web-port 6969
+# Or use any available port
 ```
+
+---
 
 ## 📡 API Endpoints
 
@@ -90,9 +112,9 @@ curl -X POST http://localhost:5000/generate-resume \
   }'
 ```
 
-## 🤖 Mock Mode vs Real AI Mode
+---
 
-The application operates in two modes:
+## 🤖 Modes: Mock vs Real AI
 
 | Mode     | Trigger                                | Behavior                                           |
 |----------|----------------------------------------|----------------------------------------------------|
@@ -226,11 +248,15 @@ flutter run -d chrome --web-port=8080
 pip install reportlab==4.2.0
 ```
 
+---
+
 ## 📋 Additional Documentation
 
 - [USAGE_GUIDE.md](USAGE_GUIDE.md) – Detailed usage instructions and examples
 - [ARCHITECTURE.md](ARCHITECTURE.md) – Technical architecture and design decisions
 - [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) – Pre-release verification checklist
+
+---
 
 ## 📜 License & Credits
 
